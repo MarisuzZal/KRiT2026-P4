@@ -2,7 +2,7 @@
 //  measurement.p4 — Platforma pomiarowa dla Wedge 100BF-65X (Intel Tofino-1)
 //
 //  Artykuł KRiT 2026: "Tofino jako platforma pomiarowa: nanosekundowa analiza
-//  opóźnień ruchu w sieci"  (Antoniewicz, Zaliwski, Sosnowski, Cieślak).
+//  opóźnień ruchu w sieci"  (Rekosz, Zmuda, Grzelski, Jalowski, Żal — zgłoszenie).
 //
 //  Funkcje:
 //    (1) Fan-in:  agregacja 4 portów serwera → 2 uplinki do DUT

@@ -4,7 +4,7 @@ Programowalna platforma pomiarowa **Wedge 100BF-65X (Intel Tofino-1)** —
 kod P4 i skrypty kontrolne towarzyszące artykułowi:
 
 > **Tofino jako platforma pomiarowa: nanosekundowa analiza opóźnień ruchu w sieci**
-> KRiT 2026, P. Antoniewicz, M. Zaliwski, M. Sosnowski, R. Cieślak.
+> KRiT 2026 (zgłoszenie), P. Rekosz, M. Zmuda, J. Grzelski, Ł. Jalowski, M. Żal.
 
 ## Zakres
 
@@ -96,9 +96,10 @@ TBD (planowana: Apache 2.0)
 
 ```
 @inproceedings{krit2026tofino,
-  author    = {Antoniewicz, P. and Zaliwski, M. and Sosnowski, M. and Cieślak, R.},
+  author    = {Rekosz, Paulina and Zmuda, Marek and Grzelski, Jakub and Jalowski, Łukasz and Żal, Mariusz},
   title     = {Tofino jako platforma pomiarowa: nanosekundowa analiza opóźnień ruchu w sieci},
-  booktitle = {KRiT 2026},
-  year      = {2026}
+  booktitle = {Submitted to KRiT 2026},
+  year      = {2026},
+  note      = {Under review}
 }
 ```
