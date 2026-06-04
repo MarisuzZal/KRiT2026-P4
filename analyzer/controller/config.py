@@ -6,7 +6,12 @@ i pula adresów strumieni baseline są konfigurowalne.
 """
 
 # --- Połączenie z gRPC server (bf_switchd) --------------------------------
-GRPC_ADDR = "localhost:50052"
+# Analizator (Tofino #1, Wedge 100BF-65X) — bf_switchd pod tym adresem.
+# Override przez env: BF_SWITCHD_HOST, BF_SWITCHD_PORT.
+import os as _os
+ANALYZER_HOST = _os.environ.get("BF_SWITCHD_HOST", "10.133.5.4")
+ANALYZER_PORT = int(_os.environ.get("BF_SWITCHD_PORT", "50052"))
+GRPC_ADDR     = f"{ANALYZER_HOST}:{ANALYZER_PORT}"
 DEVICE_ID = 0
 PROGRAM   = "measurement"
 

@@ -19,7 +19,10 @@ for _p in [f"{_SDE}/lib/{_PY}/site-packages",
 
 import bfrt_grpc.client as gc
 
-GRPC_ADDR = "localhost:50052"
+# Override przez env: BF_SWITCHD_HOST, BF_SWITCHD_PORT
+DUT_HOST  = os.environ.get("BF_SWITCHD_HOST", "10.133.5.3")
+DUT_PORT  = int(os.environ.get("BF_SWITCHD_PORT", "50052"))
+GRPC_ADDR = f"{DUT_HOST}:{DUT_PORT}"
 DEVICE_ID = 0
 
 # --- Mapowanie portów DUT (Wedge 100BF-32X) --------------------------------

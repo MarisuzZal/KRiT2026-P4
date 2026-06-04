@@ -22,8 +22,9 @@ from pathlib import Path
 import sde_paths  # noqa: F401
 import bfrt_grpc.client as gc
 
+import config
 from config import (
-    GRPC_ADDR, DEVICE_ID, PROGRAM, POLL_INTERVAL_SEC, CSV_OUTPUT_PATH,
+    DEVICE_ID, PROGRAM, POLL_INTERVAL_SEC, CSV_OUTPUT_PATH,
     BASELINE_MODE,
 )
 from ports  import configure_all_ports
@@ -43,16 +44,20 @@ def _handle_sigint(signum, frame):
 
 def connect():
     """Łączy się z bf_switchd, zwraca (bfrt, target)."""
-    interface = gc.ClientInterface(GRPC_ADDR, client_id=0, device_id=DEVICE_ID)
+    interface = gc.ClientInterface(config.GRPC_ADDR, client_id=0, device_id=DEVICE_ID)
     target = gc.Target(device_id=DEVICE_ID, pipe_id=0xffff)
     interface.bind_pipeline_config(PROGRAM)
     bfrt = interface.bfrt_info_get(PROGRAM)
-    print(f"[OK] połączono z {GRPC_ADDR}, program={PROGRAM}, baseline={BASELINE_MODE}")
+    print(f"[OK] połączono z {config.GRPC_ADDR}, program={PROGRAM}, baseline={BASELINE_MODE}")
     return bfrt, target
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--grpc-host", default=None,
+                        help="Host bf_switchd (override BF_SWITCHD_HOST i config.py)")
+    parser.add_argument("--grpc-port", type=int, default=None,
+                        help="Port bf_switchd (default 50052)")
     parser.add_argument("--no-program", action="store_true",
                         help="Tylko polling, bez programowania tabel")
     parser.add_argument("--duration", type=float, default=0.0,
@@ -62,6 +67,13 @@ def main():
     args = parser.parse_args()
 
     signal.signal(signal.SIGINT, _handle_sigint)
+
+    # CLI override gRPC endpoint
+    if args.grpc_host or args.grpc_port:
+        host = args.grpc_host or config.ANALYZER_HOST
+        port = args.grpc_port or config.ANALYZER_PORT
+        config.GRPC_ADDR = f"{host}:{port}"
+        print(f"[*] gRPC endpoint override: {config.GRPC_ADDR}")
 
     bfrt, target = connect()
 
