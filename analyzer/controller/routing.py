@@ -27,10 +27,10 @@ def program_routing(bfrt, target):
     tbl = bfrt.table_get("pipe.SwitchIngress.port_routing")
     flow_id_dut = FLOW_ID_DUT_START
 
-    # --- Fan-in DUT (16 wpisów: 4 porty x 4 prefiksy) -----------------------
-    # Ale faktycznie sensowne są tylko 4 — port serwera ma 1 partnera cross-card
-    # Pozostałe 12 to drop (default_action).
-    for port_src, dst, plen, uplink, _ in DUT_PAIRS:
+    # --- Fan-in DUT (4 wpisy: per port serwera, każdy z własnym uplink TX) -
+    # DUT_PAIRS to 6-tuple: (port_src, dst, plen, uplink_TX, port_dst, uplink_RX)
+    # Każdy port serwera kieruje na uplink swojego pipe (same-pipe T1).
+    for port_src, dst, plen, uplink, _port_dst, _uplink_rx in DUT_PAIRS:
         key = tbl.make_key([
             gc.KeyTuple("ig_intr_md.ingress_port", port_src),
             gc.KeyTuple("hdr.ipv4.dst_addr", _ip_to_int(dst), prefix_len=plen),

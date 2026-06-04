@@ -70,22 +70,50 @@ BASELINE_SUBNETS_PER_PORT = {
     PORT_S3: ("10.250.3.0", 24),
 }
 
-# --- Pary cross-card dla ruchu testowego (zgodnie z polaczenia_struktura.md) -
+# --- Per-pipe DUT uplinks --------------------------------------------------
+# Mapping ustalony 2026-06-05 po analizie kabli T1↔T2:
+#   Para A: TRex0↔TRex2 via T1 D_P 288 (pipe 2) ↔ T2 D_P 0 (pipe 0)
+#                  oraz T1 D_P 132 (pipe 1) ↔ T2 D_P 24 (pipe 0)
+#   Para B: TRex1↔TRex3 via T1 D_P 292 (pipe 2) ↔ T2 D_P 48 (pipe 0)
+#                  oraz T1 D_P 128 (pipe 1) ↔ T2 D_P 8 (pipe 0)
+#
+# T2 NullSwitch forward:
+#   T2 D_P 0  → T2 D_P 24 (i odwrotnie)  -- para A
+#   T2 D_P 48 → T2 D_P 8  (i odwrotnie)  -- para B
+#
+# Wszystkie segmenty T1 są SAME-PIPE → eliminuje cross-pipe routing T1.
+# T2 forward to też same-pipe (wszystkie cztery porty w pipe 0 T2).
+PORT_UPLINK_TX_A = 288   # pipe 2 T1 — para A TX
+PORT_UPLINK_TX_B = 292   # pipe 2 T1 — para B TX
+PORT_UPLINK_RX_A = 132   # pipe 1 T1 — para A RX (powrót via T2)
+PORT_UPLINK_RX_B = 128   # pipe 1 T1 — para B RX (powrót via T2)
+
+# DUT pairs: każda określa pełną ścieżkę source→dest
 DUT_PAIRS = [
-    # (port_src, dst_subnet, prefix_len, uplink, dst_port_after_fanout)
-    (PORT_S0, "10.1.0.0",  16, PORT_UPLINK_A, PORT_S2),  # 10.3 (S0) -> 10.1 (S2)
-    (PORT_S2, "10.3.0.0",  16, PORT_UPLINK_A, PORT_S0),  # 10.1 (S2) -> 10.3 (S0)
-    (PORT_S1, "10.0.0.0",  16, PORT_UPLINK_B, PORT_S3),  # 10.2 (S1) -> 10.0 (S3)
-    (PORT_S3, "10.2.0.0",  16, PORT_UPLINK_B, PORT_S1),  # 10.0 (S3) -> 10.2 (S1)
+    # (port_src, dst_subnet, plen, uplink_TX, port_dst_after_fanout, uplink_RX)
+    # Para A: 10.3↔10.1 (cross-card, ale same-pipe T1)
+    (PORT_S0, "10.1.0.0", 16, PORT_UPLINK_TX_A, PORT_S2, PORT_UPLINK_RX_A),
+    (PORT_S2, "10.3.0.0", 16, PORT_UPLINK_RX_A, PORT_S0, PORT_UPLINK_TX_A),
+    # Para B: 10.2↔10.0
+    (PORT_S1, "10.0.0.0", 16, PORT_UPLINK_TX_B, PORT_S3, PORT_UPLINK_RX_B),
+    (PORT_S3, "10.2.0.0", 16, PORT_UPLINK_RX_B, PORT_S1, PORT_UPLINK_TX_B),
 ]
 
-# Mapa fan-out z uplinku
+# Fan-out: gdy pakiet wraca z DUT (przez T2), wchodzi na uplink_RX
 FANOUT_FROM_UPLINK = [
-    (PORT_UPLINK_A, "10.1.0.0", 16, PORT_S2),
-    (PORT_UPLINK_A, "10.3.0.0", 16, PORT_S0),
-    (PORT_UPLINK_B, "10.0.0.0", 16, PORT_S3),
-    (PORT_UPLINK_B, "10.2.0.0", 16, PORT_S1),
+    # Para A return: T1 D_P 132 (pipe 1) odbiera z T2
+    (PORT_UPLINK_RX_A, "10.1.0.0", 16, PORT_S2),    # od TRex 0 → do TRex 2
+    (PORT_UPLINK_TX_A, "10.3.0.0", 16, PORT_S0),    # od TRex 2 → do TRex 0 (pakiet TRex2 wrócił via uplink 288 pipe 2)
+    # Para B return
+    (PORT_UPLINK_RX_B, "10.0.0.0", 16, PORT_S3),    # od TRex 1 → do TRex 3
+    (PORT_UPLINK_TX_B, "10.2.0.0", 16, PORT_S1),    # od TRex 3 → do TRex 1
 ]
+
+# Legacy uplinki (z RTSS): zachowane dla wstecznej kompatybilności
+# T1 60 ↔ T2 152 (stary uplink_A)
+# T1 132 ↔ T2 24 (stary uplink_B) — także para A RX powyżej
+PORT_UPLINK_A = 60    # legacy
+PORT_UPLINK_B = 132   # legacy (= PORT_UPLINK_RX_A)
 
 # --- Skala histogramu — KONFIGURACJA ---------------------------------------
 # Po wstępnych pomiarach min/max ustawiamy zakres tak, żeby 128 binów
