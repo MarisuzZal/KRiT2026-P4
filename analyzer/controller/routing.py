@@ -11,6 +11,7 @@ import bfrt_grpc.client as gc
 
 from config import (
     DUT_PAIRS, FANOUT_FROM_UPLINK, BASELINE_SUBNETS_PER_PORT,
+    BASELINE_MODE, recirc_for, pipe_of, PIPE_RECIRC,
     PORT_BASE_OUT, PORT_BASE_IN,
     HISTOGRAM_BIN_WIDTH_NS, HISTOGRAM_OFFSET_NS,
     FLOW_ID_DUT_START, FLOW_ID_BASELINE_START,
@@ -41,15 +42,19 @@ def program_routing(bfrt, target):
         tbl.entry_add(target, [key], [data])
         flow_id_dut += 1
 
-    # --- Fan-in baseline (4 wpisy: 4 porty serwera -> port baseline) -------
+    # --- Fan-in baseline (4 wpisy: każdy port serwera → recirc swojego pipe) -
     flow_id_base = FLOW_ID_BASELINE_START
     for port_src, (subnet_ip, plen) in BASELINE_SUBNETS_PER_PORT.items():
+        if BASELINE_MODE == "RECIRC":
+            recirc = recirc_for(port_src)   # per-pipe!
+        else:
+            recirc = PORT_BASE_OUT          # DAC mode: stały port
         key = tbl.make_key([
             gc.KeyTuple("ig_intr_md.ingress_port", port_src),
             gc.KeyTuple("hdr.ipv4.dst_addr", _ip_to_int(subnet_ip), prefix_len=plen),
         ])
         data = tbl.make_data([
-            gc.DataTuple("egress_port", PORT_BASE_OUT),
+            gc.DataTuple("egress_port", recirc),
             gc.DataTuple("flow_id", flow_id_base),
         ], action_name="SwitchIngress.stamp_to_baseline")
         tbl.entry_add(target, [key], [data])
@@ -66,19 +71,26 @@ def program_routing(bfrt, target):
         ], action_name="SwitchIngress.read_from_dut")
         tbl.entry_add(target, [key], [data])
 
-    # --- Fan-out baseline (4 wpisy) ----------------------------------------
-    # Klucz: (PORT_BASE_IN, 10.250.X.0/24) -> port serwera, z którego wyszło
+    # --- Fan-out baseline (per port serwera, klucz to JEGO recirc) ---------
+    # Klucz: (recirc_for(port_dst), 10.250.X.0/24) -> port_dst
+    # Pakiet wraca z recirc TEGO SAMEGO pipe co źródłowy port serwera.
+    fanout_count = 0
     for port_dst, (subnet_ip, plen) in BASELINE_SUBNETS_PER_PORT.items():
+        if BASELINE_MODE == "RECIRC":
+            recirc_in = recirc_for(port_dst)   # ten sam pipe co port_dst
+        else:
+            recirc_in = PORT_BASE_IN
         key = tbl.make_key([
-            gc.KeyTuple("ig_intr_md.ingress_port", PORT_BASE_IN),
+            gc.KeyTuple("ig_intr_md.ingress_port", recirc_in),
             gc.KeyTuple("hdr.ipv4.dst_addr", _ip_to_int(subnet_ip), prefix_len=plen),
         ])
         data = tbl.make_data([
             gc.DataTuple("egress_port", port_dst),
         ], action_name="SwitchIngress.read_from_baseline")
         tbl.entry_add(target, [key], [data])
+        fanout_count += 1
 
-    print(f"[OK] port_routing: {4 + 4 + 4 + 4} wpisów (4 fan-in DUT + 4 fan-in base + 4 fan-out DUT + 4 fan-out base)")
+    print(f"[OK] port_routing: 4 fan-in DUT + 4 fan-in base + 4 fan-out DUT + {fanout_count} fan-out base = {4+4+4+fanout_count} wpisów")
 
 
 def program_histogram(bfrt, target):

@@ -26,12 +26,33 @@ PORT_S3 = 188   # NIC #2 A0, prefiks 10.0.0.0/16
 PORT_UPLINK_A = 60    # para A: 10.3 <-> 10.1
 PORT_UPLINK_B = 132   # para B: 10.2 <-> 10.0
 
-# Baseline (tryb domyślny — recyrkulacja, działa bez podpiętego DAC)
+# Baseline (tryb domyślny — recyrkulacja per pipe)
 BASELINE_MODE = "RECIRC"   # albo "DAC"
 
+# Tofino-1 4-pipe: każdy pipe ma swój port recyrkulacyjny D_P = pipe<<7 | 68
+# Pakiet z portu w pipe X MUSI iść na recirc D_P pipe X (cross-pipe do recirc
+# innego pipe nie działa w SDE 9.13.4 na Wedge 100BF-65X).
+PIPE_RECIRC = {
+    0: 68,
+    1: 196,
+    2: 324,
+    3: 452,
+}
+
+def pipe_of(port: int) -> int:
+    """D_P → pipe (Tofino-1 numerowanie: 7 bitów port w pipe, wyższe = pipe)."""
+    return port >> 7
+
+def recirc_for(port: int) -> int:
+    """Zwraca recirc D_P dla pipe w którym żyje dany port."""
+    return PIPE_RECIRC[pipe_of(port)]
+
 if BASELINE_MODE == "RECIRC":
-    PORT_BASE_OUT = 68    # port recyrkulacyjny pipe 0
-    PORT_BASE_IN  = 68
+    # Per-pipe: zarówno OUT jak IN to recirc-of-source-pipe.
+    # Tablica routingu dostanie 4 wpisy fan-in (po jednym per port serwera),
+    # każdy z innym egress_port = recirc_for(port_src).
+    PORT_BASE_OUT = None  # nieużywane — patrz recirc_for() w routing.py
+    PORT_BASE_IN  = None
 elif BASELINE_MODE == "DAC":
     PORT_BASE_OUT = 308
     PORT_BASE_IN  = 148

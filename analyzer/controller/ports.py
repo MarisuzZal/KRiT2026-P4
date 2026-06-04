@@ -19,6 +19,7 @@ import bfrt_grpc.client as gc
 from config import (
     PORT_S0, PORT_S1, PORT_S2, PORT_S3,
     PORT_UPLINK_A, PORT_UPLINK_B,
+    BASELINE_MODE, PIPE_RECIRC,
     PORT_BASE_OUT, PORT_BASE_IN,
 )
 
@@ -86,12 +87,11 @@ def configure_all_ports(bfrt, target):
     for dp, label in rs_ports:
         configure_port(bfrt, target, dp, CFG_100G_RS, label)
 
-    # Baseline: recirc lub DAC
-    if PORT_BASE_OUT == PORT_BASE_IN:
-        # Port recyrkulacyjny jest zarządzany przez SDE — nie konfigurujemy
-        # go przez $PORT (zwracał INVALID_ARGUMENT). SDE automatycznie
-        # ustawia loopback i właściwy speed.
-        print(f"[INFO] port {PORT_BASE_OUT}: recirc baseline (zarządzany przez SDE, pomijam)")
+    # Baseline: per-pipe recirc lub DAC
+    if BASELINE_MODE == "RECIRC":
+        # Wszystkie 4 porty recirc są zarządzane przez SDE — informacyjnie
+        for pipe_id, recirc_dp in PIPE_RECIRC.items():
+            print(f"[INFO] port {recirc_dp} (pipe {pipe_id} recirc): zarządzany przez SDE, pomijam")
     else:
         # DAC mode: oba porty fizyczne, RS-FEC jak normalne 100G
         configure_port(bfrt, target, PORT_BASE_OUT, CFG_100G_RS, "DAC baseline OUT")
