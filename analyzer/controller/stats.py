@@ -67,16 +67,26 @@ def read_all_stats(bfrt, target):
 
 
 def compute_corrected_metrics(stats):
-    """Wylicza skorygowane metryki. Zwraca dict również gdy DUT lub
-    baseline jest pusty -- pozwala obserwować baseline samodzielnie
-    przed podłączeniem DUT."""
+    """Wylicza skorygowane metryki.
+
+    Średnia liczona z HISTOGRAMU (Σ midpoint × count / Σ count),
+    nie z reg_sum_lo / reg_count, bo reg_sum_lo jest 32-bit i
+    overflow'uje po ~6.6M pakietów × 646 ns. Histogram odporny
+    bo każdy bin ma własny 32-bit licznik.
+
+    Min/max z reg_min/reg_max (te są stabilne — single-pkt update).
+    Jitter z reg_max - reg_min."""
+    from histogram import histogram_to_stats
+
     dut, base = stats["dut"], stats["base"]
+    dut_hstats  = histogram_to_stats(dut["hist"],  drop_first_bin=True)
+    base_hstats = histogram_to_stats(base["hist"], drop_first_bin=True)
 
     if dut["count"] == 0 and base["count"] == 0:
-        return None   # naprawdę nic nie leci -- pomiń linię
+        return None
 
-    avg_dut  = dut["sum"]  / dut["count"]  if dut["count"]  > 0 else 0.0
-    avg_base = base["sum"] / base["count"] if base["count"] > 0 else 0.0
+    avg_dut  = dut_hstats["mean"]
+    avg_base = base_hstats["mean"]
 
     return {
         "avg":          (avg_dut - avg_base) if dut["count"] > 0 else 0.0,
@@ -84,8 +94,10 @@ def compute_corrected_metrics(stats):
         "max":          (dut["max"] - avg_base) if dut["count"] > 0 else 0.0,
         "jitter":       (dut["max"] - dut["min"]) if dut["count"] > 0 else 0.0,
         "baseline_avg": avg_base,
+        "baseline_std": base_hstats["std"],
         "baseline_min": base["min"] if base["count"] > 0 else 0,
         "baseline_max": base["max"] if base["count"] > 0 else 0,
+        "baseline_total_hist": base_hstats["total"],
         "corrected":    dut["count"] > 0 and base["count"] > 0,
         "count":        dut["count"],
         "base_count":   base["count"],

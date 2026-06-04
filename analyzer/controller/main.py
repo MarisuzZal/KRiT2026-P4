@@ -92,7 +92,7 @@ def main():
     csv_writer.writerow([
         "timestamp", "dut_count", "base_count",
         "dut_min", "dut_max", "dut_avg", "jitter",
-        "base_min", "base_max", "base_avg",
+        "base_min", "base_max", "base_avg", "base_std", "base_total_hist",
         "corrected_avg", "corrected_min", "corrected_max",
     ])
     print(f"[*] Logowanie do {csv_path}")
@@ -103,7 +103,8 @@ def main():
 
     print(f"[*] Start pollingu (interval={POLL_INTERVAL_SEC}s)")
     print(f"{'timestamp':>10} {'count_DUT':>10} {'avg_real':>10} "
-          f"{'min':>8} {'max':>8} {'jitter':>8} {'base_avg':>10}")
+          f"{'min':>8} {'max':>8} {'jitter':>8} {'base_avg':>10} "
+          f"{'base_std':>10} {'base_n':>12}")
 
     while _running:
         time.sleep(POLL_INTERVAL_SEC)
@@ -121,7 +122,10 @@ def main():
             stats["dut"]["min"], stats["dut"]["max"],
             stats["dut"]["sum"] / max(1, stats["dut"]["count"]),
             metrics["jitter"],
-            stats["base"]["min"], stats["base"]["max"], metrics.get("baseline_avg", 0),
+            stats["base"]["min"], stats["base"]["max"],
+            metrics.get("baseline_avg", 0),
+            metrics.get("baseline_std", 0),
+            metrics.get("baseline_total_hist", 0),
             metrics["avg"], metrics["min"], metrics["max"],
         ])
         csv_file.flush()
@@ -129,7 +133,9 @@ def main():
         print(f"{elapsed:10.1f} {stats['dut']['count']:>10} "
               f"{metrics['avg']:>10.1f} {metrics['min']:>8.1f} "
               f"{metrics['max']:>8.1f} {metrics['jitter']:>8.1f} "
-              f"{metrics.get('baseline_avg', 0):>10.1f}")
+              f"{metrics.get('baseline_avg', 0):>10.1f} "
+              f"{metrics.get('baseline_std', 0):>10.2f} "
+              f"{metrics.get('baseline_total_hist', 0):>12}")
 
         # Snapshot PNG co N sekund
         if now - last_snapshot >= args.snapshot_interval:
