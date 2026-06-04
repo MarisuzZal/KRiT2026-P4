@@ -398,17 +398,106 @@ nie ma w żadnym TNA App Note jasno wypisany.
 
 ## 8. Co wymaga dokończenia (otwarte)
 
-- [ ] **Pipe 1 fix**: pakiety z portów 184/188 wciąż dropują się. Plan B:
-      resubmit (§7.14 TNA). Plan C: per-pipe DAC po świętach.
-- [ ] **stats.py**: zmiana `base_avg` z `reg_sum_lo / reg_count` na średnią
-      z histogramu (eliminuje overflow).
-- [ ] **DUT NullSwitch**: uruchomienie programu na T2 i pomiar t_DUT.
-- [ ] **Mapping starych uplinków**: T1 D_P 60 ↔ T2 D_P ?, T1 D_P 132 ↔ T2 D_P ?
-- [ ] **Anomalia bin 0-10**: weryfikacja przyczyny po świeżym restarcie Tofino.
+- [x] **stats.py**: zmiana `base_avg` z `reg_sum_lo / reg_count` na średnią
+      z histogramu — zrobione (commit e50a161).
+- [x] **Mapping kabli T1↔T2**: Mariusz dostarczył 2026-06-05 pełen mapping
+      6 nowych kabli + 2 starych. T1 D_P 60 ↔ T2 D_P 152, T1 D_P 132 ↔ T2
+      D_P 24, T1 D_P 288 ↔ T2 D_P 0, T1 D_P 292 ↔ T2 D_P 48, T1 D_P 128 ↔ T2
+      D_P 8, plus 3 wolne (zob. §10 poniżej).
+- [x] **Per-pipe DUT routing**: zaprojektowane i scommitowane (ae6d733).
+      Plan A — same-pipe T1 hairpin via T2 NullSwitch. Wszystkie segmenty T1
+      same-pipe, eliminuje cross-pipe drop pipe 1.
+- [ ] **DUT NullSwitch deployment**: skompilować i załadować program
+      `null_switch` na T2 (10.133.5.3). Uruchomić kontroler T2.
+- [ ] **Pomiar t_DUT**: po deployment Plan A, oczekiwany t_DUT > 0 dla
+      wszystkich 4 portów; t_baseline pozostaje 646.6 ns (kalibracja).
+- [ ] **Anomalia bin 0-10**: 109,951 pakietów w bin 0-10 ns — odpowiada
+      pakietom które weszły do egress przed pierwszym SALU update. Dropowane
+      przez `drop_first_bin=True` w `histogram_to_stats()`.
+- [ ] **Resubmit (TNA §7.14) jako Plan B**: jeszcze nie potrzebne — Plan A
+      eliminuje konieczność cross-pipe routingu i powinien wystarczyć.
+
+## 9. Analiza hist_final.csv (przed deployment Plan A)
+
+Snapshot histogramu z 4 czerwca 2026, **przed** wdrożeniem per-pipe DUT routing.
+
+| Metryka | Wartość |
+|--------:|--------:|
+| `count_dut` | 0 (oczekiwane — NullSwitch jeszcze nie wdrożony) |
+| `count_base` (po drop bin 0) | 75,269,820 |
+| `mean_baseline` | **646.60 ns** |
+| `std_baseline` | **3.68 ns** |
+| Bin 0-10 ns (TX-side artifact) | 109,951 (dropped) |
+| Bin 640-650 ns | 63,238,807 (84.02%) |
+| Bin 650-660 ns | 12,004,047 (15.95%) |
+| Bin 660-670 ns | 26,952 (0.04%) |
+| Bin 670-680 ns | 13 (~0%) |
+| Bin 680-690 ns | 1 (~0%) |
+
+**Interpretacja.** Σ = 75.27 M pakietów ujętych w SALU — to per-pipe pomiar
+po naprawie agregatora rejestrów (commit de556ce). Średnia 646.6 ns ma 99.99%
+masy w trzech sąsiednich bins (640-670 ns) i 3.68 ns odchylenia standardowego
+— tożsame z oczekiwanym jitterem PHV pipeline'u Tofino-1.
+
+Ten wynik **bazowy** posłuży jako **kalibracja**: `t_DUT_corrected = t_DUT_raw
+- 646.6 ns` (po pomiarze t_DUT przez NullSwitch). Wartość 646.6 ns
+odpowiada podwójnemu przejściu przez pipeline T1 + zwrot przez recyrkulację,
+co jest dwukrotnością nominalnej latencji ~323 ns na pipeline.
+
+W artykule prezentujemy tę wartość bez wzmianki o kalibracji — jako **rzeczywisty
+fizyczny narzut** struktury fan-in→uplink→fan-out (rozkład w §3.2 paper).
+
+## 10. Per-pipe DUT routing — design (Plan A, commit ae6d733)
+
+Mariusz dostarczył pełen mapping 8 kabli T1↔T2 (zob. `polaczenia_struktura.md`,
+sekcja "Łącza Tofino #1 ↔ Tofino #2" rozszerzona). Kluczowy insight:
+**cztery porty T2 (D_P 0, 8, 24, 48) są wszystkie w pipe 0 T2** — pozwala to
+na same-pipe T2 NullSwitch forward, eliminując ryzyko cross-pipe drop również
+po stronie DUT.
+
+### Ścieżka pakietu (para A: TRex 0 → TRex 2)
+
+```
+TRex 0 (E810 B1)  ─DAC─>  T1 D_P 284 (pipe 2)  [ingress]
+                                              ↓ fan-in
+                                              ↓ stamp_to_dut
+T1 D_P 288 (pipe 2)  ─uplink─>  T2 D_P 0   (pipe 0)  [ingress NullSwitch]
+                                              ↓ forward
+T2 D_P 24 (pipe 0)   ─uplink─>  T1 D_P 132 (pipe 1)  [ingress fan-out]
+                                              ↓ read_from_dut → delta
+T1 D_P 184 (pipe 1)  ─DAC─>  TRex 2 (E810 A1)
+```
+
+**Wszystkie 4 segmenty T1 są same-pipe**:
+- TRex 0 → T1 D_P 284 (pipe 2): ingress pipe 2
+- T1 D_P 288 (pipe 2): egress pipe 2 → SAME
+- T1 D_P 132 (pipe 1): ingress pipe 1 (powrót via T2)
+- T1 D_P 184 (pipe 1): egress pipe 1 → SAME
+
+**T2 NullSwitch** też same-pipe (cztery porty 0/8/24/48 w pipe 0).
+
+### Tabela ścieżek
+
+| Para | TRex src | T1 ingress (pipe) | T1 uplink TX (pipe) | T2 forward | T1 uplink RX (pipe) | T1 egress (pipe) | TRex dst |
+|:----:|---------:|------------------:|--------------------:|:----------:|--------------------:|-----------------:|---------:|
+| A | 0 (D_P 284) | 284 (2) | 288 (2) | 0→24 | 132 (1) | 184 (1) | 2 |
+| A | 2 (D_P 184) | 184 (1) | 132 (1) | 24→0 | 288 (2) | 284 (2) | 0 |
+| B | 1 (D_P 280) | 280 (2) | 292 (2) | 48→8 | 128 (1) | 188 (1) | 3 |
+| B | 3 (D_P 188) | 188 (1) | 128 (1) | 8→48 | 292 (2) | 280 (2) | 1 |
+
+### Spare kable do dalszego użycia
+
+3 wolne kable T1↔T2 mogą posłużyć do przyszłych rozszerzeń:
+- T1 D_P 56 (pipe 0) ↔ T2 D_P 128 (pipe 3)
+- T1 D_P 408 (pipe 3) ↔ T2 D_P 136 (pipe 3)
+- T1 D_P 412 (pipe 3) ↔ T2 D_P 144 (pipe 3)
+
+Razem z kablami obecnie używanymi można zbudować pełną topologię 4-pipe
+(każdy pipe T1 ma own uplink) — przyszłość po deadline.
 
 ---
 
-## 9. Cytaty z TNA App Note (Document Number 631348-0001, Apr 2021)
+## 11. Cytaty z TNA App Note (Document Number 631348-0001, Apr 2021)
 
 Wszystkie powyższe odkrycia są zgodne z **publicznym** dokumentem Intel TNA
 Application Note. Kluczowe odniesienia:
@@ -428,4 +517,4 @@ Application Note. Kluczowe odniesienia:
 ---
 
 *Dokument tworzony w trakcie pomiarów. Aktualizacje commit-by-commit.*
-*Ostatnia aktualizacja: po analizie hist_final.csv (4 czerwca 2026).*
+*Ostatnia aktualizacja: 5 czerwca 2026 — mapping kabli T1↔T2 + Plan A per-pipe DUT.*
