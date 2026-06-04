@@ -87,7 +87,7 @@ def program_histogram(bfrt, target):
         low  = HISTOGRAM_OFFSET_NS + i * HISTOGRAM_BIN_WIDTH_NS
         high = HISTOGRAM_OFFSET_NS + (i + 1) * HISTOGRAM_BIN_WIDTH_NS - 1
         key = tbl.make_key([
-            gc.KeyTuple("ig_md.delta", low=low, high=high),
+            gc.KeyTuple("ig_md.delta_lo", low=low, high=high),
         ])
         data = tbl.make_data([
             gc.DataTuple("b", i),

@@ -113,6 +113,7 @@ struct headers_t {
 
 struct ig_metadata_t {
     delta_t     delta;            // wyliczone Δ (tylko dla pakietów wracających)
+    bit<16>     delta_lo;         // dolne 16 bitów Δ — klucz range-match histogramu
     bit<1>      is_returning;     // 1 = pakiet wraca (z DUT lub baseline)
     bit<1>      path_is_baseline; // 1 = ścieżka baseline, 0 = DUT (indeks rejestru)
     bin_idx_t   bin;              // indeks binu histogramu (0..127)
@@ -251,9 +252,11 @@ control SwitchIngress(
     // Obliczenie Δ — pojedyncze odejmowanie 48-bit
     // -------------------------------------------------------------------------
     action compute_delta() {
-        // 48-bit subtract, keep low 32 bits (range >4 s — wystarcza z zapasem)
+        // 48-bit subtract, keep low 32 bits dla statystyk (range >4 s),
+        // dolne 16 bitów osobno dla histogramu (range-match limit 16 bit)
         ts_t diff = ig_intr_md.ingress_mac_tstamp - hdr.ts.tx_ts;
-        ig_md.delta = diff[31:0];
+        ig_md.delta    = diff[31:0];
+        ig_md.delta_lo = diff[15:0];
     }
 
     // -------------------------------------------------------------------------
@@ -263,7 +266,7 @@ control SwitchIngress(
     action set_bin(bin_idx_t b) { ig_md.bin = b; }
 
     table histogram_bin_map {
-        key = { ig_md.delta : range; }
+        key = { ig_md.delta_lo : range; }   // 16-bit — TNA range-match budget
         actions = { set_bin; NoAction; }
         default_action = NoAction;
         size = HIST_BINS;
