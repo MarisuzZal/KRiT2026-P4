@@ -28,7 +28,7 @@ from config import (
     BASELINE_MODE,
 )
 from ports  import configure_all_ports
-from routing import program_routing, program_histogram, clear_all
+from routing import program_routing, program_routing_per_pipe, program_histogram, clear_all
 from stats import read_all_stats, compute_corrected_metrics
 from histogram import save_histogram_csv, save_histogram_png
 
@@ -79,8 +79,16 @@ def main():
 
     if not args.no_program:
         configure_all_ports(bfrt, target)
-        clear_all(bfrt, target)
-        program_routing(bfrt, target)
+        # Wyczyść per-pipe (bezpieczniej)
+        for pipe_id in range(4):
+            t_pipe = gc.Target(device_id=0, pipe_id=pipe_id)
+            try:
+                clear_all(bfrt, t_pipe)
+            except Exception:
+                pass
+        # Programuj routing explicit per-pipe
+        program_routing_per_pipe(bfrt, num_pipes=4)
+        # Histogram bin map — pipe_id=0xffff (jest mniej feralny, brak per-port klucza)
         program_histogram(bfrt, target)
         print("[*] Tabele zaprogramowane. Czekam 2 s na ustabilizowanie...")
         time.sleep(2.0)
