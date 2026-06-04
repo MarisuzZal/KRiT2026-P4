@@ -12,8 +12,15 @@ import sde_paths  # noqa: F401
 import bfrt_grpc.client as gc
 
 
-def _read_register(bfrt, target, reg_name: str, num_entries: int):
-    """Czyta rejestr jako listę wartości (kolejność = index)."""
+def _read_register(bfrt, target, reg_name: str, num_entries: int, aggregator=sum):
+    """Czyta rejestr jako listę wartości (kolejność = index).
+
+    Per-pipe register w hardware to lista 4 wartości (jedna per pipe).
+    Aggregator decyduje jak agregować:
+      - sum:  dla count i sum (globalna suma per pipe)
+      - max:  dla reg_max (faktyczne maksimum)
+      - min:  dla reg_min (faktyczne minimum)
+    """
     tbl = bfrt.table_get(f"pipe.SwitchIngress.{reg_name}")
     values = []
     for idx in range(num_entries):
@@ -21,24 +28,26 @@ def _read_register(bfrt, target, reg_name: str, num_entries: int):
         resp = tbl.entry_get(target, [key], {"from_hw": True})
         for data, _ in resp:
             d = data.to_dict()
-            # nazwa pola = "SwitchIngress.reg_xxx.f1" — bierzemy pierwszy klucz
             field = next(k for k in d.keys() if not k.startswith("$"))
             v = d[field]
-            # Jeśli wartość jest listą (per-pipe), bierzemy max (rejestr global)
             if isinstance(v, list):
-                v = max(v)
+                v = aggregator(v)
             values.append(v)
     return values
 
 
 def read_all_stats(bfrt, target):
-    """Zwraca słownik ze wszystkimi metrykami DUT i baseline."""
-    min_v   = _read_register(bfrt, target, "reg_min",     2)
-    max_v   = _read_register(bfrt, target, "reg_max",     2)
-    sum_v   = _read_register(bfrt, target, "reg_sum_lo",  2)
-    count_v = _read_register(bfrt, target, "reg_count",   2)
-    hist_d  = _read_register(bfrt, target, "reg_hist_dut",  128)
-    hist_b  = _read_register(bfrt, target, "reg_hist_base", 128)
+    """Zwraca słownik ze wszystkimi metrykami DUT i baseline.
+    Per-pipe aggregation:
+      - min/max: faktyczne min/max ze wszystkich pipes
+      - sum/count/hist: globalna suma per pipe
+    """
+    min_v   = _read_register(bfrt, target, "reg_min",     2, aggregator=min)
+    max_v   = _read_register(bfrt, target, "reg_max",     2, aggregator=max)
+    sum_v   = _read_register(bfrt, target, "reg_sum_lo",  2, aggregator=sum)
+    count_v = _read_register(bfrt, target, "reg_count",   2, aggregator=sum)
+    hist_d  = _read_register(bfrt, target, "reg_hist_dut",  128, aggregator=sum)
+    hist_b  = _read_register(bfrt, target, "reg_hist_base", 128, aggregator=sum)
     return {
         "dut": {
             "min":   min_v[0],
