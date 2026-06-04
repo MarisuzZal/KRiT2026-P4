@@ -8,27 +8,49 @@ kod P4 i skrypty kontrolne towarzyszące artykułowi:
 
 ## Zakres
 
-Repozytorium zawiera **kompletny stos pomiarowy**:
+Repozytorium zawiera **kompletny stos pomiarowy** dla dwóch układów Tofino:
 
-- `p4/measurement.p4` — kod P4 dla przełącznika pomiarowego (Tofino-1, TNA),
-  realizujący równolegle: agregację 4 portów serwera na 2 uplinki do DUT,
-  rozproszenie ruchu powrotnego, stamping znaczników czasu MAC, obliczanie
-  Δ = t_RX − t_TX, statystyki min/max/sum/count i histogram 128 binów,
-  oraz **automatyczną kalibrację online** przez ścieżkę baseline (recyrkulacja
-  lub pętla DAC).
+### Tofino #1 — analizator (pomiarowy, Wedge 100BF-65X)
 
-- `controller/` — skrypty Pythona (BF-RT) programujące tabele routingu i
-  histogramu, odpytujące rejestry SALU, wyliczające skorygowane wartości
-  Δ_DUT_real = Δ_DUT − Δ_baseline.
+- `p4/measurement.p4` — kod P4: agregacja portów serwera na łącza do DUT,
+  rozproszenie ruchu powrotnego, stamping znaczników czasu, obliczanie
+  $t_\text{out}$, statystyki SALU, histogram 128 przedziałów, **automatyczna
+  kalibracja online** przez ścieżkę baseline (recyrkulacja lub pętla DAC).
+- `controller/` — skrypty BF-RT: programowanie tabel routingu i histogramu,
+  polling rejestrów, korekta $t_\text{DUT} = t_\text{out} - t_\text{base}$.
 
-- `trex/` — profile TRex generujące ruch testowy (4 podsieci /16) i ruch
-  kalibracyjny (10.250.0.0/16 per port serwera).
+### Tofino #2 — urządzenie badane (DUT, Wedge 100BF-32X)
 
-- `simulator/` — skrypty walidacyjne pod Intel Tofino Model (do rozwoju
-  i testowania bez dostępu do fizycznego sprzętu).
+Trzy programy P4 o rosnącej złożoności (`dut/`):
 
-- `docs/` — dokumentacja techniczna: metodyka pomiaru, mapowanie portów,
-  porównanie wariantów baseline (recirc vs DAC).
+| Program | Logika | Cel pomiarowy |
+|---|---|---|
+| `null_switch` | tablica `forward` (port → port) | odniesienie — sam potok |
+| `l2l3_switch` | `mac_lookup` + `ipv4_lookup` + TTL | typowy DC switch |
+| `l2l3_recirc2` | jak wyżej + 2× recyrkulacja każdego pakietu | koszt recyrkulacji |
+
+Kontrolery SDN dla każdego programu: `dut/controller/`.
+
+### Generator ruchu (TRex)
+
+Cztery scenariusze modulacji natężenia (`trex/scenarios/`):
+
+| Scenariusz | Plik | Mechanizm |
+|---|---|---|
+| Stałe natężenie | `constant.py` | `STLTXCont` |
+| Liniowy ramp | `ramp.py` | skrypt CLI z `port.update(mult=...)` |
+| Skokowe / schodki | `step.py` | skrypt CLI |
+| Microburst | `microburst.py` | `STLTXMultiBurst` |
+
+Pozwala to symulować zarówno stabilny przepływ, jak i nagłe wzrosty/spadki
+natężenia oraz microbursty charakterystyczne dla obciążeń DC.
+
+### Pozostałe
+
+- `trex/profile_fanio.py` — historyczny profil DUT + baseline (4 strumienie
+  DUT + 4 strumienie kalibracyjne).
+- `simulator/` — walidacja logiczna w Intel Tofino Model.
+- `docs/` — metodyka pomiaru, mapowanie portów, recirc vs DAC.
 
 ## Środowisko docelowe
 
