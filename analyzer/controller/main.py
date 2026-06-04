@@ -79,16 +79,8 @@ def main():
 
     if not args.no_program:
         configure_all_ports(bfrt, target)
-        # Wyczyść per-pipe (bezpieczniej)
-        for pipe_id in range(4):
-            t_pipe = gc.Target(device_id=0, pipe_id=pipe_id)
-            try:
-                clear_all(bfrt, t_pipe)
-            except Exception:
-                pass
-        # Programuj routing explicit per-pipe
-        program_routing_per_pipe(bfrt, num_pipes=4)
-        # Histogram bin map — pipe_id=0xffff (jest mniej feralny, brak per-port klucza)
+        clear_all(bfrt, target)
+        program_routing(bfrt, target)
         program_histogram(bfrt, target)
         print("[*] Tabele zaprogramowane. Czekam 2 s na ustabilizowanie...")
         time.sleep(2.0)
