@@ -12,11 +12,11 @@ Repozytorium zawiera **kompletny stos pomiarowy** dla dwóch układów Tofino:
 
 ### Tofino #1 — analizator (pomiarowy, Wedge 100BF-65X)
 
-- `p4/measurement.p4` — kod P4: agregacja portów serwera na łącza do DUT,
+- `analyzer/p4/measurement.p4` — kod P4: agregacja portów serwera na łącza do DUT,
   rozproszenie ruchu powrotnego, stamping znaczników czasu, obliczanie
   $t_\text{out}$, statystyki SALU, histogram 128 przedziałów, **automatyczna
   kalibracja online** przez ścieżkę baseline (recyrkulacja lub pętla DAC).
-- `controller/` — skrypty BF-RT: programowanie tabel routingu i histogramu,
+- `analyzer/controller/` — skrypty BF-RT: programowanie tabel routingu i histogramu,
   polling rejestrów, korekta $t_\text{DUT} = t_\text{out} - t_\text{base}$.
 
 ### Tofino #2 — urządzenie badane (DUT, Wedge 100BF-32X)
@@ -86,7 +86,7 @@ bf-p4c --target tofino --arch tna -o build measurement.p4
 
 # 2. Załadowanie programu i uruchomienie kontrolera
 bf_switchd --conf-file=tofino_skel.conf
-python3 controller/main.py
+python3 analyzer/controller/main.py
 
 # 3. Uruchomienie generatora ruchu (na serwerze)
 trex -f trex/profile_fanio.py -m 50 -d 60

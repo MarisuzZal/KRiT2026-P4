@@ -9,7 +9,7 @@ set -euo pipefail
 
 SDE="${SDE:-/opt/bf-sde-9.13.2}"
 PROGRAM="measurement"
-P4_SRC="$(dirname "$0")/../p4/${PROGRAM}.p4"
+P4_SRC="$(dirname "$0")/../analyzer/p4/${PROGRAM}.p4"
 BUILD_DIR="$(dirname "$0")/build"
 
 if [ ! -d "$SDE" ]; then
@@ -36,6 +36,6 @@ TM_PID=$!
 
 sleep 5
 echo "[*] tofino-model PID=$TM_PID. Uruchom kontroler:"
-echo "    python3 controller/main.py --no-program"
+echo "    python3 analyzer/controller/main.py --no-program"
 echo ""
 echo "[*] Aby zatrzymać symulator: kill $TM_PID"

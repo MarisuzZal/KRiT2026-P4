@@ -87,6 +87,6 @@ Można:
 
 Sekcja "Mechanizm pomiaru opóźnień" papera KRiT 2026 opisuje powyższą
 metodykę. Tabele wyników w sekcji "Wyniki" pochodzą z plików CSV
-generowanych przez `controller/main.py`.
+generowanych przez `analyzer/analyzer/controller/main.py`.
 
 Pełne źródła: <https://github.com/MarisuzZal/KRiT2026-P4>

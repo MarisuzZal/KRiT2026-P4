@@ -19,7 +19,7 @@ Symulator nie modeluje zegara MAU, więc **nie zwróci sensownych wartości
 SDE=/opt/bf-sde-9.13.2 ./run-tofino-model.sh
 
 # 2. W drugim terminalu — uruchom kontroler (programuje tabele, polluje)
-python3 ../controller/main.py --duration 30
+python3 ../analyzer/controller/main.py --duration 30
 
 # 3. W trzecim terminalu — wstrzyknij pakiet testowy przez PTF lub scapy
 python3 test_inject.py  # do napisania osobno

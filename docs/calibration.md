@@ -11,7 +11,7 @@ ten narzut odjąć.
 ## Dwa warianty kalibracji
 
 Implementacja wspiera **dwa warianty** ścieżki baseline, wybierane przez
-makro w `p4/measurement.p4`:
+makro w `analyzer/p4/measurement.p4`:
 
 ```c
 #define BASELINE_MODE_RECIRC   // wariant A — default
