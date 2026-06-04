@@ -110,3 +110,17 @@ def clear_all(bfrt, target):
             print(f"[OK] wyczyszczono {tname}")
         except Exception as e:
             print(f"[WARN] nie udało się wyczyścić {tname}: {e}")
+
+
+def program_routing_per_pipe(bfrt, num_pipes: int = 4):
+    """Wersja explicit per-pipe — jeśli pipe_id=0xffff nie programuje
+    wszystkich pipes na danym targecie SDE. Programuje TĘ SAMĄ tablicę
+    osobno w każdym z `num_pipes` pipes Tofino-1."""
+    for pipe_id in range(num_pipes):
+        target = gc.Target(device_id=0, pipe_id=pipe_id)
+        print(f"[*] Programowanie pipe {pipe_id}...")
+        try:
+            program_routing(bfrt, target)
+        except Exception as e:
+            # Wpis może już istnieć z poprzedniego pipe — to OK, kontynuuj
+            print(f"    pipe {pipe_id}: {e}")
