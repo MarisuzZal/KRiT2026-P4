@@ -8,6 +8,7 @@ Z każdego cyklu odczytu otrzymujemy:
 
 Korekta: Δ_DUT_real = Δ_DUT_zmierzone − Δ_baseline_zmierzone
 """
+import sde_paths  # noqa: F401
 import bfrt_grpc.client as gc
 
 

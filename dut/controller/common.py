@@ -8,6 +8,15 @@ Założenia:
     w bfshell po podłączeniu kabli DAC -- numery poniżej są placeholderem
     do dostosowania.
 """
+import os
+import sys
+_SDE = os.environ.get("SDE_INSTALL", "/home/student/sde/bf-sde-9.13.4/install")
+_PY = f"python{sys.version_info.major}.{sys.version_info.minor}"
+for _p in [f"{_SDE}/lib/{_PY}/site-packages",
+           f"/usr/local/lib/{_PY}/dist-packages"]:
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.append(_p)
+
 import bfrt_grpc.client as gc
 
 GRPC_ADDR = "localhost:50052"

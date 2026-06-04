@@ -6,6 +6,7 @@ Programowanie tabel BF-RT:
 Wymaga `bfrt_grpc.client` z BF-RT API (część Intel P4 Studio SDE 9.13.2).
 """
 import ipaddress
+import sde_paths  # noqa: F401
 import bfrt_grpc.client as gc
 
 from config import (

@@ -19,6 +19,7 @@ import sys
 import time
 from pathlib import Path
 
+import sde_paths  # noqa: F401
 import bfrt_grpc.client as gc
 
 from config import (
