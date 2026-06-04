@@ -149,8 +149,9 @@ parser SwitchIngressParser(
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
-            (8w6, 8w17): parse_l4;
-            default:   accept;
+            8w6:     parse_l4;
+            8w17:    parse_l4;
+            default: accept;
         }
     }
     state parse_l4 {
