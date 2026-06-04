@@ -86,9 +86,13 @@ def configure_all_ports(bfrt, target):
     for dp, label in rs_ports:
         configure_port(bfrt, target, dp, CFG_100G_RS, label)
 
-    # Baseline: recirc (jeden port, FEC NONE) lub DAC (dwa porty, RS-FEC)
+    # Baseline: recirc lub DAC
     if PORT_BASE_OUT == PORT_BASE_IN:
-        configure_port(bfrt, target, PORT_BASE_OUT, CFG_RECIRC, "recirc baseline")
+        # Port recyrkulacyjny jest zarządzany przez SDE — nie konfigurujemy
+        # go przez $PORT (zwracał INVALID_ARGUMENT). SDE automatycznie
+        # ustawia loopback i właściwy speed.
+        print(f"[INFO] port {PORT_BASE_OUT}: recirc baseline (zarządzany przez SDE, pomijam)")
     else:
+        # DAC mode: oba porty fizyczne, RS-FEC jak normalne 100G
         configure_port(bfrt, target, PORT_BASE_OUT, CFG_100G_RS, "DAC baseline OUT")
         configure_port(bfrt, target, PORT_BASE_IN,  CFG_100G_RS, "DAC baseline IN")
