@@ -63,6 +63,7 @@
 
 typedef bit<7>  bin_idx_t;
 typedef bit<48> ts_t;
+typedef bit<32> delta_t;   // 32-bit — limit SALU Tofino-1; ~4 s zapasu
 
 // =============================================================================
 // Definicje nagłówków
@@ -111,7 +112,7 @@ struct headers_t {
 }
 
 struct ig_metadata_t {
-    bit<48>     delta;            // wyliczone Δ (tylko dla pakietów wracających)
+    delta_t     delta;            // wyliczone Δ (tylko dla pakietów wracających)
     bit<1>      is_returning;     // 1 = pakiet wraca (z DUT lub baseline)
     bit<1>      path_is_baseline; // 1 = ścieżka baseline, 0 = DUT (indeks rejestru)
     bin_idx_t   bin;              // indeks binu histogramu (0..127)
@@ -250,7 +251,9 @@ control SwitchIngress(
     // Obliczenie Δ — pojedyncze odejmowanie 48-bit
     // -------------------------------------------------------------------------
     action compute_delta() {
-        ig_md.delta = ig_intr_md.ingress_mac_tstamp - hdr.ts.tx_ts;
+        // 48-bit subtract, keep low 32 bits (range >4 s — wystarcza z zapasem)
+        ts_t diff = ig_intr_md.ingress_mac_tstamp - hdr.ts.tx_ts;
+        ig_md.delta = diff[31:0];
     }
 
     // -------------------------------------------------------------------------
@@ -271,17 +274,17 @@ control SwitchIngress(
     //   index 0 = DUT, index 1 = baseline (path_is_baseline)
     //   Oszczędza 4 stages MAU względem dwóch osobnych kompletów
     // -------------------------------------------------------------------------
-    Register<ts_t, bit<1>>(2, 48w0xFFFFFFFFFFFF) reg_min;
-    RegisterAction<ts_t, bit<1>, ts_t>(reg_min) update_min = {
-        void apply(inout ts_t value, out ts_t rv) {
+    Register<delta_t, bit<1>>(2, 32w0xFFFFFFFF) reg_min;
+    RegisterAction<delta_t, bit<1>, delta_t>(reg_min) update_min = {
+        void apply(inout delta_t value, out delta_t rv) {
             if (ig_md.delta < value) { value = ig_md.delta; }
             rv = value;
         }
     };
 
-    Register<ts_t, bit<1>>(2, 48w0) reg_max;
-    RegisterAction<ts_t, bit<1>, ts_t>(reg_max) update_max = {
-        void apply(inout ts_t value, out ts_t rv) {
+    Register<delta_t, bit<1>>(2, 32w0) reg_max;
+    RegisterAction<delta_t, bit<1>, delta_t>(reg_max) update_max = {
+        void apply(inout delta_t value, out delta_t rv) {
             if (ig_md.delta > value) { value = ig_md.delta; }
             rv = value;
         }
@@ -290,7 +293,7 @@ control SwitchIngress(
     Register<bit<32>, bit<1>>(2, 0) reg_sum_lo;
     RegisterAction<bit<32>, bit<1>, bit<32>>(reg_sum_lo) update_sum_lo = {
         void apply(inout bit<32> value, out bit<32> rv) {
-            value = value + ig_md.delta[31:0];
+            value = value + ig_md.delta;
             rv = value;
         }
     };
