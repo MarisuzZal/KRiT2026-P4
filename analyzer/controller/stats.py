@@ -58,35 +58,26 @@ def read_all_stats(bfrt, target):
 
 
 def compute_corrected_metrics(stats):
-    """Wylicza skorygowane metryki DUT (odejmując średnią baseline)."""
+    """Wylicza skorygowane metryki. Zwraca dict również gdy DUT lub
+    baseline jest pusty -- pozwala obserwować baseline samodzielnie
+    przed podłączeniem DUT."""
     dut, base = stats["dut"], stats["base"]
-    if dut["count"] == 0:
-        return None
 
-    avg_dut  = dut["sum"]  / dut["count"]
+    if dut["count"] == 0 and base["count"] == 0:
+        return None   # naprawdę nic nie leci -- pomiń linię
+
+    avg_dut  = dut["sum"]  / dut["count"]  if dut["count"]  > 0 else 0.0
     avg_base = base["sum"] / base["count"] if base["count"] > 0 else 0.0
 
-    if base["count"] == 0:
-        # Pierwsze sekundy — brak danych baseline
-        return {
-            "avg":          avg_dut,
-            "min":          dut["min"],
-            "max":          dut["max"],
-            "jitter":       dut["max"] - dut["min"],
-            "baseline_avg": 0.0,
-            "corrected":    False,
-            "count":        dut["count"],
-        }
-
     return {
-        "avg":          avg_dut - avg_base,
-        "min":          dut["min"] - avg_base,
-        "max":          dut["max"] - avg_base,
-        "jitter":       dut["max"] - dut["min"],   # jitter bez korekty
+        "avg":          (avg_dut - avg_base) if dut["count"] > 0 else 0.0,
+        "min":          (dut["min"] - avg_base) if dut["count"] > 0 else 0.0,
+        "max":          (dut["max"] - avg_base) if dut["count"] > 0 else 0.0,
+        "jitter":       (dut["max"] - dut["min"]) if dut["count"] > 0 else 0.0,
         "baseline_avg": avg_base,
-        "baseline_min": base["min"],
-        "baseline_max": base["max"],
-        "corrected":    True,
+        "baseline_min": base["min"] if base["count"] > 0 else 0,
+        "baseline_max": base["max"] if base["count"] > 0 else 0,
+        "corrected":    dut["count"] > 0 and base["count"] > 0,
         "count":        dut["count"],
         "base_count":   base["count"],
     }

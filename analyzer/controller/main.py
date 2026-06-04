@@ -26,6 +26,7 @@ from config import (
     GRPC_ADDR, DEVICE_ID, PROGRAM, POLL_INTERVAL_SEC, CSV_OUTPUT_PATH,
     BASELINE_MODE,
 )
+from ports  import configure_all_ports
 from routing import program_routing, program_histogram, clear_all
 from stats import read_all_stats, compute_corrected_metrics
 from histogram import save_histogram_csv, save_histogram_png
@@ -65,6 +66,7 @@ def main():
     bfrt, target = connect()
 
     if not args.no_program:
+        configure_all_ports(bfrt, target)
         clear_all(bfrt, target)
         program_routing(bfrt, target)
         program_histogram(bfrt, target)
