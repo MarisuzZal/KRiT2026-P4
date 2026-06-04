@@ -74,14 +74,13 @@ header ethernet_t {
     bit<16> ether_type;
 }
 
-// Własny nagłówek znacznika czasu (16 bajtów: 8 + 2 + 4 + 2 = 16)
-// Wstawiany za nagłówkiem Ethernet w drodze do DUT/baseline,
-// usuwany na powrocie po wyliczeniu Δ
+// Własny nagłówek znacznika czasu — 6 bajtów (tylko ts)
+// flow_id i seq przeniesione do ig_metadata_t / SALU; zostają wewnętrznie
+// w analizatorze, nie są transportowane na drucie. Pozwala to uniknąć
+// konfliktów PHV allocator w akcji stamp (PHV source + action data
+// w tej samej PHV container).
 header timestamp_t {
-    ts_t    tx_ts;      // znacznik TS1 (ingress_mac_tstamp) z momentu wejścia do 65X
-    bit<16> flow_id;    // identyfikator strumienia (z konfiguracji TRex)
-    bit<32> seq;        // numer sekwencji (per-flow, narastający)
-    bit<16> _pad;       // wyrównanie do 16 bajtów
+    ts_t    tx_ts;       // znacznik TS1 (ingress_mac_tstamp) z momentu wejścia do 65X
 }
 
 header ipv4_t {
@@ -179,9 +178,6 @@ control SwitchIngress(
     action stamp_to_dut(PortId_t egress_port, bit<16> flow_id) {
         hdr.ts.setValid();
         hdr.ts.tx_ts = ig_intr_md.ingress_mac_tstamp;
-        hdr.ts.flow_id = flow_id;
-        hdr.ts.seq = 0;
-        hdr.ts._pad = 0;
         hdr.ethernet.ether_type = 16w0xABCD;
         ig_tm_md.ucast_egress_port = egress_port;
         ig_md.flow_id = flow_id;
@@ -189,9 +185,6 @@ control SwitchIngress(
     action stamp_to_baseline(PortId_t egress_port, bit<16> flow_id) {
         hdr.ts.setValid();
         hdr.ts.tx_ts = ig_intr_md.ingress_mac_tstamp;
-        hdr.ts.flow_id = flow_id;
-        hdr.ts.seq = 0;
-        hdr.ts._pad = 0;
         hdr.ethernet.ether_type = 16w0xABCD;
         ig_tm_md.ucast_egress_port = egress_port;
         ig_md.flow_id = flow_id;
@@ -339,7 +332,6 @@ control SwitchIngress(
         // 2) Stamping numeru sekwencji per strumień (tylko TX)
         if (hdr.ts.isValid() && ig_md.is_returning == 0) {
             ig_md.seq_value = get_next_seq.execute(ig_md.flow_id[7:0]);
-            hdr.ts.seq = ig_md.seq_value;
         }
 
         // 3) Pomiar (tylko dla pakietów wracających)
