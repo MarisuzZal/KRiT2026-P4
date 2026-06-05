@@ -8,6 +8,7 @@ Programuje pojedynczą tablicę `forward` mapującą:
 import sde_paths  # noqa: F401  # MUSI być przed bfrt_grpc
 import bfrt_grpc.client as gc
 from common import connect, T2_PORT_A0, T2_PORT_A1, T2_PORT_B0, T2_PORT_B1
+from ports import configure_all_ports
 
 PROGRAM = "null_switch"
 
@@ -40,5 +41,6 @@ def program_forward(bfrt, target):
 
 if __name__ == "__main__":
     bfrt, target = connect(PROGRAM)
+    configure_all_ports(bfrt, target)
     program_forward(bfrt, target)
     print("[OK] NullSwitch gotowy — pakiety od TRex 0/2 routowane same-pipe T2.")

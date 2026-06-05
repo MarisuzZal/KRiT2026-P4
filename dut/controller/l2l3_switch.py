@@ -56,6 +56,7 @@ def program_ipv4_lookup(bfrt, target):
 
 if __name__ == "__main__":
     bfrt, target = connect(PROGRAM)
+    configure_all_ports(bfrt, target)
     program_mac_lookup(bfrt, target)
     program_ipv4_lookup(bfrt, target)
     print("[OK] L2/L3 Switch gotowy.")

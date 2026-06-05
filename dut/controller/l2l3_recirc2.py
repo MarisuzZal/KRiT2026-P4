@@ -11,11 +11,13 @@ w l2l3_recirc2.p4 (domyślnie 9w68 dla pipe 0).
 """
 from l2l3_switch import program_mac_lookup, program_ipv4_lookup
 from common import connect
+from ports import configure_all_ports
 
 PROGRAM = "l2l3_recirc2"
 
 if __name__ == "__main__":
     bfrt, target = connect(PROGRAM)
+    configure_all_ports(bfrt, target)
     program_mac_lookup(bfrt, target)
     program_ipv4_lookup(bfrt, target)
     print("[OK] L2/L3 Switch z 2x recyrkulacją gotowy.")
