@@ -245,11 +245,14 @@ control SwitchIngress(
     // Obliczenie Δ — pojedyncze odejmowanie 48-bit
     // -------------------------------------------------------------------------
     action compute_delta() {
-        // 48-bit subtract, keep low 32 bits dla statystyk (range >4 s),
-        // dolne 16 bitów osobno dla histogramu (range-match limit 16 bit)
-        ts_t diff = ig_intr_md.ingress_mac_tstamp - hdr.ts.tx_ts;
-        ig_md.delta    = diff[31:0];
-        ig_md.delta_lo = diff[15:0];
+        // 32-bit subtract — wystarcza dla pomiaru (range 4.3 s).
+        // delta_lo bierzemy ze SLICE'A już-obliczonego delta (32->16-bit slice
+        // jest tani w jednym PHV container), nie z osobnego slice z 48-bit
+        // diff (który bf-p4c może nieoczekiwanie zoptymalizować do zera).
+        bit<32> hi = (bit<32>)ig_intr_md.ingress_mac_tstamp;
+        bit<32> lo = (bit<32>)hdr.ts.tx_ts;
+        ig_md.delta    = hi - lo;
+        ig_md.delta_lo = ig_md.delta[15:0];
     }
 
     // -------------------------------------------------------------------------
