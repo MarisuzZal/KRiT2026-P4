@@ -4,6 +4,13 @@ Eksport histogramu do PNG i percentyle (post-processing).
 import csv
 from pathlib import Path
 
+# UWAGA: ustawiamy non-interactive backend PRZED importem pyplot.
+# Inaczej matplotlib próbuje załadować TkAgg który wymaga GUI loop —
+# crash 'main thread is not in main loop' przy długim pomiarze
+# (z wielokrotnym savefig w trakcie pollingu).
+import matplotlib
+matplotlib.use("Agg")
+
 from config import HISTOGRAM_BIN_WIDTH_NS, HISTOGRAM_OFFSET_NS
 
 
@@ -111,7 +118,7 @@ def save_histogram_csv(hist_dut, hist_base, path: Path):
 
 def save_histogram_png(hist_dut, hist_base, path: Path,
                        title="Δ histogram (DUT vs baseline)"):
-    """Zapisuje histogram jako PNG (wymaga matplotlib)."""
+    """Zapisuje histogram jako PNG (matplotlib Agg backend, headless safe)."""
     try:
         import matplotlib.pyplot as plt
     except ImportError:
