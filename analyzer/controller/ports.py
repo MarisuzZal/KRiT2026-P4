@@ -19,6 +19,8 @@ import bfrt_grpc.client as gc
 from config import (
     PORT_S0, PORT_S1, PORT_S2, PORT_S3,
     PORT_UPLINK_A, PORT_UPLINK_B,
+    PORT_UPLINK_TX_A, PORT_UPLINK_TX_B,
+    PORT_UPLINK_RX_A, PORT_UPLINK_RX_B,
     BASELINE_MODE, PIPE_RECIRC,
     PORT_BASE_OUT, PORT_BASE_IN,
 )
@@ -77,14 +79,24 @@ def configure_port(bfrt, target, dev_port: int, config: dict, label: str = ""):
 def configure_all_ports(bfrt, target):
     """Konfiguruje wszystkie porty wymagane przez measurement.p4."""
     rs_ports = [
-        (PORT_S0, "serwer TRex0 NIC#1"),
-        (PORT_S1, "serwer TRex1 NIC#1"),
-        (PORT_S2, "serwer TRex2 NIC#2"),
-        (PORT_S3, "serwer TRex3 NIC#2"),
-        (PORT_UPLINK_A, "Uplink_A → DUT"),
-        (PORT_UPLINK_B, "Uplink_B → DUT"),
+        (PORT_S0, "serwer TRex0 NIC#1 (pipe 2)"),
+        (PORT_S1, "serwer TRex1 NIC#1 (pipe 2)"),
+        (PORT_S2, "serwer TRex2 NIC#2 (pipe 1)"),
+        (PORT_S3, "serwer TRex3 NIC#2 (pipe 1)"),
+        # Per-pipe uplinki Planu A (cztery aktywne kable T1↔T2)
+        (PORT_UPLINK_TX_A, "Uplink TX_A (pipe 2) — para A TX"),
+        (PORT_UPLINK_TX_B, "Uplink TX_B (pipe 2) — para B TX"),
+        (PORT_UPLINK_RX_A, "Uplink RX_A (pipe 1) — para A RX  [= legacy uplink_B 132]"),
+        (PORT_UPLINK_RX_B, "Uplink RX_B (pipe 1) — para B RX"),
+        # Legacy uplinki RTSS (opcjonalnie)
+        (PORT_UPLINK_A, "Uplink_A legacy (pipe 0, D_P 60)"),
     ]
+    # Deduplikuj — PORT_UPLINK_RX_A == PORT_UPLINK_B (132) jest w obu listach
+    seen = set()
     for dp, label in rs_ports:
+        if dp in seen:
+            continue
+        seen.add(dp)
         configure_port(bfrt, target, dp, CFG_100G_RS, label)
 
     # Baseline: per-pipe recirc lub DAC
