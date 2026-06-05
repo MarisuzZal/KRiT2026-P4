@@ -10,6 +10,7 @@ import sde_paths  # noqa: F401  # MUSI być przed bfrt_grpc
 import bfrt_grpc.client as gc
 from common import (connect, ip_to_int, mac_to_int,
                     PORT_FROM_ANALYZER_A, PORT_FROM_ANALYZER_B)
+from ports import configure_all_ports
 
 PROGRAM = "l2l3_switch"
 
