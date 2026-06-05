@@ -118,7 +118,7 @@ PORT_UPLINK_B = 132   # legacy (= PORT_UPLINK_RX_A)
 # --- Skala histogramu — KONFIGURACJA ---------------------------------------
 # Po wstępnych pomiarach min/max ustawiamy zakres tak, żeby 128 binów
 # pokryło spodziewany zakres opóźnień Δ z marginesem
-HISTOGRAM_BIN_WIDTH_NS = 2000  # WIDE — dla scenariuszy z recyrkulacją; bazowe 20 ns   # szerokość pojedynczego binu
+HISTOGRAM_BIN_WIDTH_NS = 20    # 20 ns × 128 binów = 0..2560 ns (max range klucza 16-bit = 65 μs)   # szerokość pojedynczego binu
 HISTOGRAM_OFFSET_NS    = 0    # początek pierwszego binu
 # -> zakres histogramu: [0..1280) ns, rozdzielczość 10 ns
 # Dla precyzyjniejszych pomiarów: BIN_WIDTH_NS=1, OFFSET_NS=300
