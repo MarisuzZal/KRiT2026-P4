@@ -1,0 +1,13 @@
+# Build artefakty
+build/
+manifest.json
+*.bfa
+*.context.json
+
+# Skopiowane źródła — single source of truth to ../p4/
+# (Build_sh kopiuje przed kompilacją)
+src/*.p4
+
+# Wyniki graphs / reports
+*.dot
+*.svg

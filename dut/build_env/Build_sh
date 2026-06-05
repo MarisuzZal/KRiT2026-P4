@@ -1,0 +1,53 @@
+#!/bin/bash
+# Build_sh — kompilacja P4 dla DUT (Tofino #2, Wedge100BF-32X)
+# Usage:  ./Build_sh null_switch     # albo l2l3_switch / l2l3_recirc2
+#
+# Wymaga zmiennych środowiskowych:
+#   SDE          ścieżka do BF-SDE (np. /home/student/sde/bf-sde-9.13.4)
+#   SDE_INSTALL  ścieżka instalacji (np. $SDE/install)
+#
+# Source of truth: ../p4/*.p4 — Build_sh kopiuje przed kompilacją do src/.
+# Po `make install` artefakty trafiają do $SDE_INSTALL.
+
+set -euo pipefail
+PROG="${1:?Usage: ./Build_sh <program_name>   e.g. null_switch, l2l3_switch, l2l3_recirc2}"
+
+cd "$(dirname "$0")"
+SRC_DIR="../p4"
+[[ -f "$SRC_DIR/${PROG}.p4" ]] || { echo "ERROR: $SRC_DIR/${PROG}.p4 nie istnieje"; exit 1; }
+
+# Sync ../p4/*.p4 → src/ (single source of truth: ../p4/)
+mkdir -p src
+cp -v "$SRC_DIR/${PROG}.p4" "src/${PROG}.p4"
+
+# Czyste build/
+rm -rf build
+mkdir build && cd build
+
+cmake "$SDE/p4studio/" \
+    -DCMAKE_INSTALL_PREFIX="$SDE_INSTALL" \
+    -DCMAKE_MODULE_PATH="$SDE/cmake" \
+    -DP4_NAME="$PROG" \
+    -DP4_PATH="$(pwd)/../src/${PROG}.p4" \
+    -DP4_LANG=p4-16 \
+    -DTHRIFT_DRIVER=ON \
+    -DTOFINO=ON \
+    -DTOFINO2=OFF \
+    -DWITHPD=OFF \
+    -DP4PPFLAGS="-I$(pwd)/../src/" \
+    -DP4FLAGS="-g \
+        --create-graphs \
+        -Xp4c=-Tallocate_phv:4 \
+        -Xp4c=-Tclot_info:6 \
+        --parser-timing-reports \
+        --p4runtime-force-std-externs \
+        --p4runtime-format=json \
+        --p4runtime-files=p4info.json \
+        --program-name=$PROG \
+        --verbose=3"
+
+make -j"$(nproc)" "$PROG"
+make install
+echo ""
+echo "[OK] Skompilowano $PROG → $SDE_INSTALL"
+echo "     Uruchom: \$SDE/run_switchd.sh -p $PROG"
