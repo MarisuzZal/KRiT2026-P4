@@ -145,7 +145,13 @@ control SwitchIngress(
 
     apply {
         // Stan recyrkulacji: 0 jeśli pakiet pierwszy raz, n+1 po n-tej recyrkulacji
-        ig_md.recirc_count = (hdr.bridge.isValid()) ? hdr.bridge.recirc_count : 0;
+        // UWAGA: bf-p4c nie pozwala na ternary z isValid() jako warunkiem
+        // ("Conditions must be simple comparisons of action_data"). Rozbijamy
+        // na init + if.
+        ig_md.recirc_count = 0;
+        if (hdr.bridge.isValid()) {
+            ig_md.recirc_count = hdr.bridge.recirc_count;
+        }
 
         if (ig_md.recirc_count < MAX_RECIRC) {
             // Faza 0 lub 1: recyrkulacja
