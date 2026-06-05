@@ -93,17 +93,35 @@ def program_routing(bfrt, target):
     print(f"[OK] port_routing: 4 fan-in DUT + 4 fan-in base + 4 fan-out DUT + {fanout_count} fan-out base = {4+4+4+fanout_count} wpisów")
 
 
+def _find_delta_key_name(tbl):
+    """Po rekompilacji nazwa klucza histogram_bin_map może być inna:
+       'ig_md.delta', 'ig_md.delta[15:0]', 'ig_md.delta_lo', itp.
+       Autodyskrycja przez info() tablicy."""
+    try:
+        names = tbl.info.key_field_name_list_get()
+    except Exception:
+        names = []
+    candidates = [n for n in names if "delta" in n.lower()]
+    if not candidates:
+        raise KeyError(
+            f"Nie znaleziono pola 'delta*' w histogram_bin_map. "
+            f"Dostępne klucze: {names}"
+        )
+    if len(candidates) > 1:
+        print(f"[WARN] kandydatów klucza: {candidates}, biorę pierwszy")
+    return candidates[0]
+
+
 def program_histogram(bfrt, target):
     """Wpisuje 128 wpisów range-match dla histogram_bin_map."""
     tbl = bfrt.table_get("pipe.SwitchIngress.histogram_bin_map")
+    key_name = _find_delta_key_name(tbl)
+    print(f"[*] histogram_bin_map klucz: '{key_name}'")
     for i in range(128):
         low  = HISTOGRAM_OFFSET_NS + i * HISTOGRAM_BIN_WIDTH_NS
         high = HISTOGRAM_OFFSET_NS + (i + 1) * HISTOGRAM_BIN_WIDTH_NS - 1
         key = tbl.make_key([
-            # Po fixie histogram_bin_map klucz to slice ig_md.delta[15:0];
-            # BfRt nazwa może być "ig_md.delta" (najczęstsze) lub "ig_md.delta[15:0]".
-            # Bedz Niski-poziom, próbujemy oba; jeśli pierwszy zwróci INVALID, zmień nazwę.
-            gc.KeyTuple("ig_md.delta", low=low, high=high),
+            gc.KeyTuple(key_name, low=low, high=high),
         ])
         data = tbl.make_data([
             gc.DataTuple("b", i),
