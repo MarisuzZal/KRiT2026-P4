@@ -7,7 +7,10 @@ Programuje pojedynczą tablicę `forward` mapującą:
 """
 import sde_paths  # noqa: F401  # MUSI być przed bfrt_grpc
 import bfrt_grpc.client as gc
-from common import connect, T2_PORT_A0, T2_PORT_A1, T2_PORT_B0, T2_PORT_B1
+from common import (
+    connect, entry_add_or_mod,
+    T2_PORT_A0, T2_PORT_A1, T2_PORT_B0, T2_PORT_B1,
+)
 from ports import configure_all_ports
 
 PROGRAM = "null_switch"
@@ -31,12 +34,18 @@ def program_forward(bfrt, target):
         (T2_PORT_B0, T2_PORT_B1),   # 48 → 8
         (T2_PORT_B1, T2_PORT_B0),   # 8 → 48
     ]
+    n_added = n_mod = 0
     for ig_port, eg_port in entries:
         key = tbl.make_key([gc.KeyTuple("ig_intr_md.ingress_port", ig_port)])
         data = tbl.make_data([gc.DataTuple("port", eg_port)],
                              action_name="SwitchIngress.set_egress")
-        tbl.entry_add(target, [key], [data])
-    print(f"[OK] forward: {len(entries)} wpisów (2× para A + 2× para B)")
+        act = entry_add_or_mod(tbl, target, key, data,
+                               label=f"forward {ig_port}→{eg_port}")
+        if act == "add":
+            n_added += 1
+        elif act == "mod":
+            n_mod += 1
+    print(f"[OK] forward: {len(entries)} wpisów ({n_added} add, {n_mod} mod)")
 
 
 if __name__ == "__main__":

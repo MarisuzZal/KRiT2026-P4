@@ -27,7 +27,7 @@ def program_mac_lookup(bfrt, target):
         ])
         data = tbl.make_data([gc.DataTuple("port", port)],
                              action_name="SwitchIngress.set_egress_l2")
-        tbl.entry_add(target, [key], [data])
+        entry_add_or_mod(tbl, target, key, data)
     print(f"[OK] mac_lookup: {len(entries)} wpisów")
 
 
@@ -50,7 +50,7 @@ def program_ipv4_lookup(bfrt, target):
             gc.DataTuple("port", port),
             gc.DataTuple("new_dst_mac", mac_to_int(nh_mac)),
         ], action_name="SwitchIngress.set_egress_l3")
-        tbl.entry_add(target, [key], [data])
+        entry_add_or_mod(tbl, target, key, data)
     print(f"[OK] ipv4_lookup: {len(entries)} wpisów")
 
 

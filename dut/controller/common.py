@@ -59,3 +59,23 @@ def ip_to_int(ip: str) -> int:
 
 def mac_to_int(mac: str) -> int:
     return int(mac.replace(":", "").replace("-", ""), 16)
+
+
+def entry_add_or_mod(tbl, target, key, data, label: str = ""):
+    """Idempotentne dodawanie wpisu — przy ALREADY_EXISTS robi entry_mod.
+
+    bf_switchd zachowuje stan między uruchomieniami kontrolera, więc
+    powtórne entry_add zwraca ALREADY_EXISTS. Ten helper robi mod.
+    """
+    try:
+        tbl.entry_add(target, [key], [data])
+        action = "add"
+    except gc.BfruntimeRpcException:
+        try:
+            tbl.entry_mod(target, [key], [data])
+            action = "mod"
+        except Exception as e:
+            print(f"[WARN] {label}: {e}")
+            return None
+    return action
+
