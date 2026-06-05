@@ -55,10 +55,17 @@ header bridge_t {
     bit<8>  recirc_count;
 }
 
+// Bridge timestamp header (6 bajtów) — wstawiany przez T1 measurement.p4
+// dla pakietów DUT. T2 musi go ekstrahowć i zachować.
+header timestamp_t {
+    bit<48> tx_ts;
+}
+
 struct headers_t {
-    bridge_t   bridge;          // valid podczas recyrkulacji
-    ethernet_t ethernet;
-    ipv4_t     ipv4;
+    bridge_t    bridge;        // valid podczas recyrkulacji
+    ethernet_t  ethernet;
+    timestamp_t ts;            // valid gdy pakiet niesie znacznik T1
+    ipv4_t      ipv4;
 }
 
 struct ig_metadata_t {
@@ -91,9 +98,14 @@ parser SwitchIngressParser(
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
         transition select(hdr.ethernet.ether_type) {
+            16w0xABCD: parse_timestamp;   // pakiet niesie znacznik T1
             16w0x0800: parse_ipv4;
             default:   accept;
         }
+    }
+    state parse_timestamp {
+        pkt.extract(hdr.ts);
+        transition parse_ipv4;
     }
     state parse_ipv4 {
         pkt.extract(hdr.ipv4);
@@ -177,6 +189,7 @@ control SwitchIngressDeparser(
     apply {
         pkt.emit(hdr.bridge);     // emitowane tylko jeśli valid (recirc)
         pkt.emit(hdr.ethernet);
+        pkt.emit(hdr.ts);         // tylko jeśli valid (idzie z T1)
         pkt.emit(hdr.ipv4);
     }
 }
