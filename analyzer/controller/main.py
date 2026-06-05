@@ -91,7 +91,7 @@ def main():
         time.sleep(2.0)
 
     # CSV log
-    csv_path = Path(CSV_OUTPUT_PATH)
+    csv_path = Path(CSV_OUTPUT_PATH.replace(".csv", f"{label}.csv"))
     csv_file = open(csv_path, "w", newline="")
     # Metadata header (importujemy z histogram.py — wspólne)
     from histogram import _metadata_header_csv
