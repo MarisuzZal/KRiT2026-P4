@@ -616,6 +616,65 @@ Razem ~1224 ns mierzonych przez SALU od ingress 284 do egress 184. Z tego
 oczekiwanej dla pojedynczego przelotu Tofino (~323 ns) + ~30 ns SerDes
 narzut.
 
+## 13. Analiza świeżego histogramu (5 czerwca 2026, post-fix Bug B)
+
+Plik `hist_final.csv` (60 s, 4 kierunki, fixy 6c52fb9 + b98f0be):
+
+### Rozkład DUT (count_dut_total = 653.4M)
+
+| Bin | Zakres [ns] | Pakiety | % |
+|--:|--:|--:|--:|
+| 0 | 0-19 | 13,846,007 | 2.12 |
+| 80 | 1600-1619 | 110 | 0.00002 |
+| 81 | 1620-1639 | 572,649,004 | **87.64** |
+| 82 | 1640-1659 | 66,904,476 | **10.24** |
+| 83 | 1660-1679 | 619 | 0.00009 |
+
+**Skupienie 97.88% w binach 81+82** (1620-1659 ns) — bardzo wąski rozkład.
+Bin 80 i 83 mają natural tail (kilka setek pakietów).
+Bin 0 to TX-side artifact (2.12%) — dropowane przez `drop_first_bin=True`.
+
+Δ_DUT_mean (po drop bin 0) = **1632.09 ns**
+
+### Rozkład baseline (count_base_total = 66.2M)
+
+| Bin | Zakres [ns] | Pakiety | % |
+|--:|--:|--:|--:|
+| 0 | 0-19 | 560,127 | 0.85 |
+| 32 | 640-659 | 65,574,167 | **99.07** |
+| 33 | 660-679 | 54,243 | 0.08 |
+
+**Skupienie 99.07% w binie 32** (640-659 ns) — jeszcze ciaśniejszy
+rozkład niż DUT. σ_baseline = 0.58 ns w polling.
+
+Δ_baseline_mean (po drop bin 0) = **650.02 ns**
+
+### Główny wynik dla §6 paper
+
+**Δ_DUT_corrected = 1632.09 − 650.02 = 982.08 ns**
+
+Spójne z polling: avg_real = 982.1 ns w całym 60-sekundowym runie.
+
+### Bin 0 (TX-side artifact)
+
+Bin 0 zawiera ~2.12% DUT i ~0.85% baseline. Drop_first_bin=True
+automatycznie pomija przy liczeniu mean. Hipoteza fizyczna:
+race condition w `stamp_to_dut` (akcja nadpisuje `tx_ts`
+w pakiecie który już miał poprzednie stamp z corner case
+przy 0xABCD ether_type), powodując delta ≈ 0 dla niewielkiej
+frakcji pakietów. To **nie wpływa na publikowany wynik**, ale
+zostaje jako known TX-side timing artifact (raportowane w §7
+paper jako limitation).
+
+### Konfiguracja runu
+
+  bin_width_ns: 20 (zakres histogramu 0..2560 ns)
+  baseline_mode: RECIRC (per-pipe recirc port 68/196/324/452)
+  4 kierunki TRex aktywne (Bug A fix bce00db)
+  count_DUT rate: ~10.6 Mpps
+  count_base rate: ~1.0 Mpps
+  σ_baseline: 0.58 ns (rekordowo niski jitter)
+
 ## 11. Cytaty z TNA App Note (Document Number 631348-0001, Apr 2021)
 
 Wszystkie powyższe odkrycia są zgodne z **publicznym** dokumentem Intel TNA
@@ -636,4 +695,4 @@ Application Note. Kluczowe odniesienia:
 ---
 
 *Dokument tworzony w trakcie pomiarów. Aktualizacje commit-by-commit.*
-*Ostatnia aktualizacja: 5 czerwca 2026 — Bug B definitywnie rozwiązany, Δ_DUT_corrected = 985.7 ns.*
+*Ostatnia aktualizacja: 5 czerwca 2026 — §13 świeży histogram (Δ_DUT_corrected = 982.08 ns).*
