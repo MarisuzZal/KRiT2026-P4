@@ -29,7 +29,7 @@ from config import (
 )
 from ports  import configure_all_ports
 from routing import program_routing, program_routing_per_pipe, program_histogram, clear_all
-from stats import read_all_stats, compute_corrected_metrics
+from stats import read_all_stats, compute_corrected_metrics, reset_registers
 from histogram import save_histogram_csv, save_histogram_png
 
 
@@ -80,6 +80,7 @@ def main():
     if not args.no_program:
         configure_all_ports(bfrt, target)
         clear_all(bfrt, target)
+        reset_registers(bfrt, target)
         program_routing(bfrt, target)
         program_histogram(bfrt, target)
         print("[*] Tabele zaprogramowane. Czekam 2 s na ustabilizowanie...")

@@ -110,19 +110,52 @@ def compute_corrected_metrics(stats):
 
 
 def reset_registers(bfrt, target):
-    """Zeruje rejestry przed nowym pomiarem."""
-    for reg, n, default in [
-        ("reg_min",     2, 0xFFFFFFFFFFFF),
-        ("reg_max",     2, 0),
-        ("reg_sum_lo",  2, 0),
-        ("reg_count",   2, 0),
-        ("reg_hist_dut",  128, 0),
-        ("reg_hist_base", 128, 0),
-    ]:
-        tbl = bfrt.table_get(f"pipe.SwitchIngress.{reg}")
+    """Zeruje rejestry SALU przed nowym pomiarem.
+
+    Tofino zachowuje stan rejestrów między uruchomieniami kontrolera —
+    bez resetu nowy run "widzi" dane z poprzednich pomiarów. To wpływa
+    głównie na hist_dut/hist_base oraz reg_count.
+
+    Używa autodyskrycji data field name (per kompilacja).
+    """
+    register_specs = [
+        ("reg_min",        2,   0xFFFFFFFF),
+        ("reg_max",        2,   0),
+        ("reg_sum_lo",     2,   0),
+        ("reg_count",      2,   0),
+        ("reg_hist_dut",   128, 0),
+        ("reg_hist_base",  128, 0),
+        ("reg_snap_delta", 2,   0),
+    ]
+    for reg, n, default in register_specs:
+        try:
+            tbl = bfrt.table_get(f"pipe.SwitchIngress.{reg}")
+        except Exception as e:
+            print(f"[WARN] reset {reg}: tabela nie istnieje ({e})")
+            continue
+        # Autodyskrycja nazwy pola data (BfRt nazewnictwo zmienne)
+        data_field = None
+        try:
+            field_names = tbl.info.data_field_name_list_get()
+            data_field = next((f for f in field_names if not f.startswith("$")), None)
+        except Exception:
+            pass
+        if data_field is None:
+            print(f"[WARN] reset {reg}: brak pola data — pomijam")
+            continue
+        # Zeruj wszystkie indeksy
+        n_done = 0
         for idx in range(n):
             key = tbl.make_key([gc.KeyTuple("$REGISTER_INDEX", idx)])
-            # Nazwa data field bywa "SwitchIngress.reg_X.f1" lub podobna —
-            # konfigurowalna per kompilacja; tu zostawiamy placeholder.
-            # W praktyce: tbl.entry_mod(target, [key], [data_with_default])
-    print("[OK] rejestry zresetowane")
+            data = tbl.make_data([gc.DataTuple(data_field, default)])
+            try:
+                tbl.entry_mod(target, [key], [data])
+                n_done += 1
+            except Exception as e:
+                # Niektóre rejestry mogą wymagać entry_add
+                try:
+                    tbl.entry_add(target, [key], [data])
+                    n_done += 1
+                except Exception:
+                    pass
+        print(f"[OK] reset {reg}: {n_done}/{n} indeksów zerowane (default={default})")
