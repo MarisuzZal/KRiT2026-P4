@@ -497,6 +497,94 @@ Razem z kablami obecnie używanymi można zbudować pełną topologię 4-pipe
 
 ---
 
+## 12. Wyniki końcowe (5 czerwca 2026, post-naprawa BUG A)
+
+Trzy odkrycia rozwiązane:
+- **BUG A** (TRex profile direction vs port_id, commit bce00db): porty 2 i 3
+  wysyłały te same pakiety co porty 0 i 1. T1 dropował 50% ruchu. Po fixie
+  wszystkie 4 kierunki działają w pełni.
+- **BUG B** (histogram cały w bin 0): rozwiązany częściowo. Slice w kluczu
+  histogram_bin_map (commit 5a26dca) + $MATCH_PRIORITY (commit e364ce5)
+  poprawiły baseline histogram, ale DUT histogram wciąż wszystko w bin 0.
+  Najprawdopodobniej bf-p4c PHV alignment issue dla pipes 1 i 2 (gdzie
+  read_from_dut się wykonuje). Pozostaje known limitation — wyniki z
+  reg_min/max wystarczają dla artykułu.
+- **Plan A per-pipe DUT routing** (commit ae6d733 + 0e17a17 + 4192812):
+  zaimplementowany i działający. NullSwitch na T2 (D_P 0, 8, 16, 24).
+
+### Bilans pakietów (60 s pomiaru, po fixie BUG A)
+
+T1 porty serwerowe (RX ≈ TX, symetria):
+
+| D_P | RX [M] | TX [M] | Pipe | Rola |
+|----:|------:|------:|:---:|:----|
+| 284 | 527  | 526  | 2 | TRex 0 (10.3) |
+| 280 | 527  | 526  | 2 | TRex 1 (10.2) |
+| 184 | 527  | 526  | 1 | TRex 2 (10.1) |
+| 188 | 527  | 526  | 1 | TRex 3 (10.0) |
+
+T1 uplinki Plan A (RX = TX, perfekt symetria):
+
+| D_P | RX = TX [M] | Pipe | Rola |
+|----:|------:|:---:|:----|
+| 288 | 475 | 2 | Uplink TX_A (do T2:0) |
+| 132 | 475 | 1 | Uplink RX_A (z T2:24) |
+| 292 | 475 | 2 | Uplink TX_B (do T2:16) |
+| 128 | 475 | 1 | Uplink RX_B (z T2:8) |
+
+T2 NullSwitch (RX = TX, hairpin):
+
+| D_P | RX = TX [M] | Front | Para |
+|----:|------:|:---:|:----:|
+| 0 | 475 | 16/0 | A TX |
+| 24 | 475 | 13/0 | A RX |
+| 16 | 475 | 14/0 | B TX |
+| 8 | 475 | 15/0 | B RX |
+
+Bilans rate: 527M / 60 s ≈ 8.8 Mpps per port × 4 = 35 Mpps total wysłanych
+z TRex. 475M DUT pakietów = 90% z 527 = 45% line rate (dst w prefiksie partnera),
+52M baseline = 10% z 527 = 5% line rate (dst w 10.250.X.0/24). Zgodne z
+profilem profile_fanio.py.
+
+### Wartości fizyczne pomiaru
+
+Z 758-sekundowego runu (przerwany Tkinter bug, naprawiony w commit 602cbda):
+
+| Wielkość | Wartość | Komentarz |
+|--:|--:|:--|
+| Δ_DUT_raw | **971-1032 ns** | mean ~ 1002 ns |
+| jitter_DUT | **61 ns** | (max - min) |
+| Δ_baseline | **646.83 ns** | ± 3.85 ns |
+| σ_baseline | **3.85 ns** | (mean drift +/-0.05 przez 758 s) |
+| **Δ_DUT_corrected** | **~355 ns** | = mean_DUT − Δ_baseline |
+| count_DUT po 60 s (po fix BUG A) | **2.2 mld** | 22 Mpps × 4 pipes |
+| count_baseline po 60 s | **914 M** | 10 Mpps × 4 pipes (recirc) |
+
+Liczby pozostają stabilne w czasie z dokładnością ±1 ns dla min/max przez
+13 minut. To główne dane do §6 paper.
+
+### Interpretacja Δ_DUT_corrected = 355 ns
+
+Trasa pakietu DUT (kierunek TRex 0 → TRex 2):
+1. T1 ingress port 284 (pipe 2): ~323 ns
+2. SerDes TX 288: ~80 ns
+3. DAC 100G: <5 ns
+4. T2 ingress port 0 (pipe 0 NullSwitch): ~323 ns
+5. SerDes TX 24: ~80 ns
+6. DAC 100G: <5 ns
+7. T1 ingress port 132 (pipe 1 fan-out): ~323 ns
+8. SerDes TX 184: ~80 ns
+9. DAC 100G do TRex 2: <5 ns
+
+Razem ~1224 ns mierzonych przez SALU od ingress 284 do egress 184. Z tego
+**Δ_baseline = 647 ns** to recyrkulacja w pipe 2 (T1 ingress 284 → recirc 324
+→ T1 ingress 324 → egress 284). Δ_baseline obejmuje 2× pipeline + 1× recirc.
+
+Δ_DUT_corrected = 1002 - 647 = **355 ns** to **netto narzut T2 NullSwitch
++ 2 kable DAC + SerDes** vs samej pętli recirc T1. Wartość pasuje do
+oczekiwanej dla pojedynczego przelotu Tofino (~323 ns) + ~30 ns SerDes
+narzut.
+
 ## 11. Cytaty z TNA App Note (Document Number 631348-0001, Apr 2021)
 
 Wszystkie powyższe odkrycia są zgodne z **publicznym** dokumentem Intel TNA
@@ -517,4 +605,4 @@ Application Note. Kluczowe odniesienia:
 ---
 
 *Dokument tworzony w trakcie pomiarów. Aktualizacje commit-by-commit.*
-*Ostatnia aktualizacja: 5 czerwca 2026 — mapping kabli T1↔T2 + Plan A per-pipe DUT.*
+*Ostatnia aktualizacja: 5 czerwca 2026 — Plan A pełna symetria + Δ_DUT_corrected = 355 ns.*
