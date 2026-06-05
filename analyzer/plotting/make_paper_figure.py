@@ -214,6 +214,90 @@ def main():
     Path("paper_table_dut_comparison.tex").write_text(tex, encoding="utf-8")
     print(f"[OK] paper_table_dut_comparison.tex")
 
+    # CDF jako druga figura
+    plot_cdf(data, Path("paper_figure_dut_cdf"))
+
+
+
+
+
+def plot_cdf(data, out_path):
+    """Generuje wykres CDF dla null/l2l3_switch + baseline.
+
+    l2l3_recirc2 pokazany jako shaded band 196-201 μs (z reg_min/max polling),
+    bo histogram jest poza zakresem (modulo overflow w slice [15:0]).
+    """
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+
+    # Krzywe CDF dla null + l2l3_switch (z histogramu)
+    for label in ["null_switch", "l2l3_switch"]:
+        if label not in data:
+            continue
+        d = data[label]
+        bl, bh, dut = d["bl"], d["bh"], d["dut"].astype(np.float64)
+        # Drop bin 0 (TX artifact)
+        dut[0] = 0
+        total = dut.sum()
+        if total == 0:
+            continue
+        midpoints = (bl + bh) / 2.0
+        cdf = np.cumsum(dut) / total
+        ax.step(midpoints, cdf * 100, where="post",
+                label=f"{label}: Δ ≈ {d['sd']['mean']:.0f} ns",
+                color=d["color"], linewidth=2)
+
+    # Baseline (z jakiegokolwiek runu — wartość ~ ta sama)
+    if "null_switch" in data:
+        d = data["null_switch"]
+        bl, bh, base = d["bl"], d["bh"], d["base"].astype(np.float64)
+        base[0] = 0
+        total = base.sum()
+        if total > 0:
+            midpoints = (bl + bh) / 2.0
+            cdf = np.cumsum(base) / total
+            ax.step(midpoints, cdf * 100, where="post",
+                    label="baseline (Δ ≈ 650 ns, σ < 1 ns)",
+                    color="tab:gray", linewidth=2, linestyle="--")
+
+    # l2l3_recirc2 jako pasek 196-201 μs
+    if "l2l3_recirc2" in data:
+        override = {"min": 196536, "max": 201375}
+        ax.axvspan(override["min"], override["max"],
+                   alpha=0.25, color="tab:red",
+                   label=f"l2l3_recirc2: {override['min']/1000:.0f}-{override['max']/1000:.0f} μs "
+                         f"(z reg_min/max)$^\dagger$")
+        # Annotacja
+        ax.annotate(
+            "out of histogram\nrange",
+            xy=(199000, 50),
+            xytext=(50000, 30),
+            fontsize=9, color="tab:red",
+            arrowprops=dict(arrowstyle="->", color="tab:red", lw=1),
+            ha="center",
+        )
+
+    ax.set_xscale("log")
+    ax.set_xlabel("Δ [ns]  (log-skala)")
+    ax.set_ylabel("CDF [%]")
+    ax.set_title("CDF Δ_DUT — 3 programy DUT + baseline")
+    ax.legend(loc="lower right", fontsize=8)
+    ax.grid(True, which="both", alpha=0.3)
+    ax.set_xlim(500, 300_000)
+    ax.set_ylim(0, 105)
+
+    # Footer
+    md = data[list(data)[0]]["meta"]
+    footer = (f"git: {md.get('git_commit', '?')}  |  "
+              f"$^\dagger$ recirc2: histogram out of 16-bit slice range; "
+              f"wartość z polling reg_min/max")
+    fig.text(0.5, 0.01, footer, ha="center", fontsize=7, color="gray")
+    fig.tight_layout(rect=[0, 0.03, 1, 1])
+
+    fig.savefig(out_path.with_suffix(".pdf"), dpi=150, bbox_inches="tight")
+    fig.savefig(out_path.with_suffix(".png"), dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[OK] {out_path}.{{pdf,png}}")
+
 
 if __name__ == "__main__":
     main()
