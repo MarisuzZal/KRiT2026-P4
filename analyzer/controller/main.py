@@ -89,6 +89,10 @@ def main():
     # CSV log
     csv_path = Path(CSV_OUTPUT_PATH)
     csv_file = open(csv_path, "w", newline="")
+    # Metadata header (importujemy z histogram.py — wspólne)
+    from histogram import _metadata_header_csv
+    csv_file.write(_metadata_header_csv() + "\n")
+    csv_file.flush()
     csv_writer = csv.writer(csv_file)
     csv_writer.writerow([
         "timestamp", "dut_count", "base_count",

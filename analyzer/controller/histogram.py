@@ -11,7 +11,61 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 
+import subprocess
+import datetime
+import os
+
 from config import HISTOGRAM_BIN_WIDTH_NS, HISTOGRAM_OFFSET_NS
+
+
+def _git_commit():
+    """Zwraca skrócony hash git commit (lub 'unknown' jeśli nie git/brak)."""
+    try:
+        # Repo jest w katalogu nadrzędnym względem analyzer/controller/
+        repo_dir = Path(__file__).resolve().parents[2]
+        out = subprocess.check_output(
+            ["git", "-C", str(repo_dir), "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL, timeout=2,
+        )
+        return out.decode().strip()
+    except Exception:
+        return "unknown"
+
+
+def _git_dirty():
+    """Zwraca '-dirty' jeśli są niezacommitowane zmiany, inaczej ''."""
+    try:
+        repo_dir = Path(__file__).resolve().parents[2]
+        out = subprocess.check_output(
+            ["git", "-C", str(repo_dir), "status", "--porcelain"],
+            stderr=subprocess.DEVNULL, timeout=2,
+        )
+        return "-dirty" if out.strip() else ""
+    except Exception:
+        return ""
+
+
+def _build_metadata():
+    """Zwraca dict metadata do zapisu w plikach pomiarowych."""
+    # Lazy import baseline_mode (config może mieć cykliczny import)
+    try:
+        from config import BASELINE_MODE
+    except Exception:
+        BASELINE_MODE = "?"
+    return {
+        "git_commit": _git_commit() + _git_dirty(),
+        "timestamp":  datetime.datetime.now().isoformat(timespec="seconds"),
+        "bin_width_ns": HISTOGRAM_BIN_WIDTH_NS,
+        "bin_offset_ns": HISTOGRAM_OFFSET_NS,
+        "baseline_mode": BASELINE_MODE,
+        "host": os.uname().nodename,
+    }
+
+
+def _metadata_header_csv():
+    """Zwraca jednolinijkowy nagłówek metadata jako komentarz CSV."""
+    md = _build_metadata()
+    return "# " + "; ".join(f"{k}={v}" for k, v in md.items())
 
 
 def histogram_to_percentiles(hist, percentiles=(50, 90, 95, 99, 99.9)):
@@ -105,8 +159,19 @@ def histogram_to_stats(hist, drop_first_bin=True):
 
 
 def save_histogram_csv(hist_dut, hist_base, path: Path):
-    """Zapisuje histogram jako CSV (bin_lo, bin_hi, count_dut, count_base)."""
+    """Zapisuje histogram jako CSV.
+
+    Format:
+      # git_commit=...; timestamp=...; bin_width_ns=...; ...   ← metadata
+      bin_lo_ns,bin_hi_ns,count_dut,count_base                ← header
+      0,20,12345,678                                          ← dane
+      ...
+
+    Czytelnik pandas: pd.read_csv(path, comment='#')
+    """
     with open(path, "w", newline="") as f:
+        # Komentarz metadata jako pierwsza linia (Pandas/csv ignoruje z comment='#')
+        f.write(_metadata_header_csv() + "\n")
         writer = csv.writer(f)
         writer.writerow(["bin_lo_ns", "bin_hi_ns", "count_dut", "count_base"])
         for i in range(128):
@@ -136,7 +201,11 @@ def save_histogram_png(hist_dut, hist_base, path: Path,
     ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.3)
-    fig.tight_layout()
+    # Footer z metadata
+    md = _build_metadata()
+    footer = f"git: {md['git_commit']}  |  {md['timestamp']}  |  bin_width={md['bin_width_ns']} ns  |  baseline={md['baseline_mode']}  |  host={md['host']}"
+    fig.text(0.5, 0.01, footer, ha='center', fontsize=7, color='gray')
+    fig.tight_layout(rect=[0, 0.03, 1, 1])
     fig.savefig(path, dpi=150)
     plt.close(fig)
     print(f"[OK] histogram zapisany do {path}")
