@@ -9,7 +9,8 @@ Programuje:
 import sde_paths  # noqa: F401  # MUSI być przed bfrt_grpc
 import bfrt_grpc.client as gc
 from common import (connect, entry_add_or_mod, ip_to_int, mac_to_int,
-                    PORT_FROM_ANALYZER_A, PORT_FROM_ANALYZER_B)
+                    PORT_FROM_ANALYZER_A, PORT_FROM_ANALYZER_B,
+                    T2_PORT_A0, T2_PORT_A1, T2_PORT_B0, T2_PORT_B1)
 from ports import configure_all_ports
 
 PROGRAM = "l2l3_switch"
@@ -35,12 +36,15 @@ def program_mac_lookup(bfrt, target):
 def program_ipv4_lookup(bfrt, target):
     """L3: LPM po dst IP -> (port, next-hop MAC)."""
     tbl = bfrt.table_get("pipe.SwitchIngress.ipv4_lookup")
+    # Topology Plan A — 4 wpisy, każdy kieruje pakiet do partnera w parze:
+    #   Para A:  10.3↔10.1 przez T2_PORT_A0(=0) ↔ T2_PORT_A1(=24)
+    #   Para B:  10.2↔10.0 przez T2_PORT_B0(=16) ↔ T2_PORT_B1(=8)
     entries = [
-        # (prefix, prefix_len, egress_port, next_hop_mac)
-        ("10.0.0.0",  16, PORT_FROM_ANALYZER_B, "00:11:22:33:44:01"),
-        ("10.1.0.0",  16, PORT_FROM_ANALYZER_A, "00:11:22:33:44:02"),
-        ("10.2.0.0",  16, PORT_FROM_ANALYZER_B, "00:11:22:33:44:01"),
-        ("10.3.0.0",  16, PORT_FROM_ANALYZER_A, "00:11:22:33:44:02"),
+        # (prefix, plen, egress_port, next_hop_mac)
+        ("10.3.0.0", 16, T2_PORT_A0, "00:11:22:33:44:01"),  # do TRex 0 (port 0)
+        ("10.1.0.0", 16, T2_PORT_A1, "00:11:22:33:44:02"),  # do TRex 2 (port 24)
+        ("10.2.0.0", 16, T2_PORT_B0, "00:11:22:33:44:01"),  # do TRex 1 (port 16)
+        ("10.0.0.0", 16, T2_PORT_B1, "00:11:22:33:44:02"),  # do TRex 3 (port 8)
     ]
     for prefix, plen, port, nh_mac in entries:
         key = tbl.make_key([
