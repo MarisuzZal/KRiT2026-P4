@@ -162,12 +162,13 @@ def main():
 
     # Końcowy snapshot
     stats = read_all_stats(bfrt, target)
-    save_histogram_csv(stats["dut"]["hist"], stats["base"]["hist"],
-                       Path("hist_final.csv"))
-    save_histogram_png(stats["dut"]["hist"], stats["base"]["hist"],
-                       Path("hist_final.png"),
-                       title=f"Δ histogram (final, baseline={BASELINE_MODE})")
-    print(f"[OK] Pomiar zakończony. Logi: {csv_path}, hist_final.{{csv,png}}")
+    final_csv = Path(f"hist_final{label}.csv")
+    final_png = Path(f"hist_final{label}.png")
+    title_label = f" [{args.label}]" if args.label else ""
+    save_histogram_csv(stats["dut"]["hist"], stats["base"]["hist"], final_csv)
+    save_histogram_png(stats["dut"]["hist"], stats["base"]["hist"], final_png,
+                       title=f"Δ histogram (final, baseline={BASELINE_MODE}){title_label}")
+    print(f"[OK] Pomiar zakończony. Logi: {csv_path}, {final_csv}, {final_png}")
 
 
 if __name__ == "__main__":
