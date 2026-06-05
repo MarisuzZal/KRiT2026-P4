@@ -64,7 +64,11 @@ def main():
                         help="Czas pomiaru w sekundach (0 = nieskończony, do Ctrl+C)")
     parser.add_argument("--snapshot-interval", type=float, default=60.0,
                         help="Co ile sekund zapisać snapshot histogramu PNG")
+    parser.add_argument("--label", default="",
+                        help="Sufiks dla nazw plików (np. 'null_switch'): "
+                             "measurement_log_null_switch.csv, hist_final_null_switch.csv")
     args = parser.parse_args()
+    label = f"_{args.label}" if args.label else ""
 
     signal.signal(signal.SIGINT, _handle_sigint)
 
