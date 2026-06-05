@@ -6,7 +6,7 @@ T2 to Wedge100BF-32X. Mapping kabli T1↔T2 (z polaczenia_struktura.md
 
   T1 D_P 288 (pipe 2) ↔ T2 D_P 0   (pipe 0)  ← para A TX
   T1 D_P 132 (pipe 1) ↔ T2 D_P 24  (pipe 0)  ← para A RX
-  T1 D_P 292 (pipe 2) ↔ T2 D_P 48  (pipe 0)  ← para B TX
+  T1 D_P 292 (pipe 2) ↔ T2 D_P 16  (pipe 0)  ← para B TX (front 14/0)
   T1 D_P 128 (pipe 1) ↔ T2 D_P 8   (pipe 0)  ← para B RX
 
   T1 D_P 60  (pipe 0) ↔ T2 D_P 152 (pipe 1)  ← legacy uplink_A

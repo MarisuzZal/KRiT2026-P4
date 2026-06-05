@@ -24,7 +24,7 @@ DEVICE_ID = 0
 # Z T1 do T2 (4 nowe + 2 stare uplinki RTSS):
 #   T1 D_P 288 (pipe 2)  ↔  T2 D_P 0   (pipe 0)   — para A TX (od TRex 0)
 #   T1 D_P 132 (pipe 1)  ↔  T2 D_P 24  (pipe 0)   — para A RX / stary uplink_B
-#   T1 D_P 292 (pipe 2)  ↔  T2 D_P 48  (pipe 0)   — para B TX (od TRex 1)
+#   T1 D_P 292 (pipe 2)  ↔  T2 D_P 16  (pipe 0)   — para B TX (od TRex 1)
 #   T1 D_P 128 (pipe 1)  ↔  T2 D_P 8   (pipe 0)   — para B RX
 #   T1 D_P 60  (pipe 0)  ↔  T2 D_P 152 (pipe 1)   — stary uplink_A (zachowany)
 #   T1 D_P 56  (pipe 0)  ↔  T2 D_P 128 (pipe 3)   — wolne
@@ -32,10 +32,10 @@ DEVICE_ID = 0
 #   T1 D_P 412 (pipe 3)  ↔  T2 D_P 144 (pipe 3)   — wolne
 #
 # Cztery porty NullSwitch (wszystkie w pipe 0 T2 → same-pipe forward):
-T2_PORT_A0 = 0      # od TRex 0 (via T1 D_P 288)
-T2_PORT_A1 = 24     # do TRex 2 (via T1 D_P 132)
-T2_PORT_B0 = 48     # od TRex 1 (via T1 D_P 292)
-T2_PORT_B1 = 8      # do TRex 3 (via T1 D_P 128)
+T2_PORT_A0 = 0      # od TRex 0 (via T1 D_P 288) — front-panel 16/0
+T2_PORT_A1 = 24     # do TRex 2 (via T1 D_P 132) — front-panel 13/0
+T2_PORT_B0 = 16     # od TRex 1 (via T1 D_P 292) — front-panel 14/0
+T2_PORT_B1 = 8      # do TRex 3 (via T1 D_P 128) — front-panel 15/0
 
 # Aliasy dla wstecznej kompatybilności (stare nazwy w null_switch.py)
 PORT_FROM_ANALYZER_A = T2_PORT_A0      # para A: 0

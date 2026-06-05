@@ -74,12 +74,12 @@ BASELINE_SUBNETS_PER_PORT = {
 # Mapping ustalony 2026-06-05 po analizie kabli T1↔T2:
 #   Para A: TRex0↔TRex2 via T1 D_P 288 (pipe 2) ↔ T2 D_P 0 (pipe 0)
 #                  oraz T1 D_P 132 (pipe 1) ↔ T2 D_P 24 (pipe 0)
-#   Para B: TRex1↔TRex3 via T1 D_P 292 (pipe 2) ↔ T2 D_P 48 (pipe 0)
+#   Para B: TRex1↔TRex3 via T1 D_P 292 (pipe 2) ↔ T2 D_P 16 (pipe 0)
 #                  oraz T1 D_P 128 (pipe 1) ↔ T2 D_P 8 (pipe 0)
 #
 # T2 NullSwitch forward:
 #   T2 D_P 0  → T2 D_P 24 (i odwrotnie)  -- para A
-#   T2 D_P 48 → T2 D_P 8  (i odwrotnie)  -- para B
+#   T2 D_P 16 → T2 D_P 8  (i odwrotnie)  -- para B
 #
 # Wszystkie segmenty T1 są SAME-PIPE → eliminuje cross-pipe routing T1.
 # T2 forward to też same-pipe (wszystkie cztery porty w pipe 0 T2).

@@ -21,7 +21,7 @@ def program_forward(bfrt, target):
 
     4 wpisy realizujące cross-card hairpin per para:
       Para A: T2 D_P 0  ↔ T2 D_P 24
-      Para B: T2 D_P 48 ↔ T2 D_P 8
+      Para B: T2 D_P 16 ↔ T2 D_P 8
 
     Wszystkie wpisy są same-pipe T2 (cztery porty w pipe 0).
     """
@@ -31,8 +31,8 @@ def program_forward(bfrt, target):
         (T2_PORT_A0, T2_PORT_A1),   # 0 → 24
         (T2_PORT_A1, T2_PORT_A0),   # 24 → 0
         # Para B: TRex 1 ↔ TRex 3
-        (T2_PORT_B0, T2_PORT_B1),   # 48 → 8
-        (T2_PORT_B1, T2_PORT_B0),   # 8 → 48
+        (T2_PORT_B0, T2_PORT_B1),   # 16 → 8
+        (T2_PORT_B1, T2_PORT_B0),   # 8 → 16
     ]
     n_added = n_mod = 0
     for ig_port, eg_port in entries:

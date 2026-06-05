@@ -402,7 +402,7 @@ nie ma w żadnym TNA App Note jasno wypisany.
       z histogramu — zrobione (commit e50a161).
 - [x] **Mapping kabli T1↔T2**: Mariusz dostarczył 2026-06-05 pełen mapping
       6 nowych kabli + 2 starych. T1 D_P 60 ↔ T2 D_P 152, T1 D_P 132 ↔ T2
-      D_P 24, T1 D_P 288 ↔ T2 D_P 0, T1 D_P 292 ↔ T2 D_P 48, T1 D_P 128 ↔ T2
+      D_P 24, T1 D_P 288 ↔ T2 D_P 0, T1 D_P 292 ↔ T2 D_P 16, T1 D_P 128 ↔ T2
       D_P 8, plus 3 wolne (zob. §10 poniżej).
 - [x] **Per-pipe DUT routing**: zaprojektowane i scommitowane (ae6d733).
       Plan A — same-pipe T1 hairpin via T2 NullSwitch. Wszystkie segmenty T1
@@ -451,7 +451,7 @@ fizyczny narzut** struktury fan-in→uplink→fan-out (rozkład w §3.2 paper).
 
 Mariusz dostarczył pełen mapping 8 kabli T1↔T2 (zob. `polaczenia_struktura.md`,
 sekcja "Łącza Tofino #1 ↔ Tofino #2" rozszerzona). Kluczowy insight:
-**cztery porty T2 (D_P 0, 8, 24, 48) są wszystkie w pipe 0 T2** — pozwala to
+**cztery porty T2 (D_P 0, 8, 24, 16) są wszystkie w pipe 0 T2** — pozwala to
 na same-pipe T2 NullSwitch forward, eliminując ryzyko cross-pipe drop również
 po stronie DUT.
 
@@ -482,8 +482,8 @@ T1 D_P 184 (pipe 1)  ─DAC─>  TRex 2 (E810 A1)
 |:----:|---------:|------------------:|--------------------:|:----------:|--------------------:|-----------------:|---------:|
 | A | 0 (D_P 284) | 284 (2) | 288 (2) | 0→24 | 132 (1) | 184 (1) | 2 |
 | A | 2 (D_P 184) | 184 (1) | 132 (1) | 24→0 | 288 (2) | 284 (2) | 0 |
-| B | 1 (D_P 280) | 280 (2) | 292 (2) | 48→8 | 128 (1) | 188 (1) | 3 |
-| B | 3 (D_P 188) | 188 (1) | 128 (1) | 8→48 | 292 (2) | 280 (2) | 1 |
+| B | 1 (D_P 280) | 280 (2) | 292 (2) | 16→8 | 128 (1) | 188 (1) | 3 |
+| B | 3 (D_P 188) | 188 (1) | 128 (1) | 8→16 | 292 (2) | 280 (2) | 1 |
 
 ### Spare kable do dalszego użycia
 
