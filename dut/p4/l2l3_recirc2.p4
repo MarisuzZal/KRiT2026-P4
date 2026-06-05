@@ -47,10 +47,12 @@ header ipv4_t {
     bit<32> dst_addr;
 }
 
-// Nagłówek bridge — licznik recyrkulacji + flagi
+// Nagłówek bridge — licznik recyrkulacji (8-bit żeby uniknąć PHV mixed-op
+// w tej samej bajtce). MAX_RECIRC i tak <= 4, więc 3-bit wystarczyłby
+// matematycznie, ale TNA nie pozwala mieszać ADD i ASSIGN na tym samym
+// PHV container w jednej akcji.
 header bridge_t {
-    bit<3>  recirc_count;
-    bit<5>  _pad;
+    bit<8>  recirc_count;
 }
 
 struct headers_t {
@@ -126,7 +128,6 @@ control SwitchIngress(
         // Zwiększ licznik i zawróć przez port recyrkulacyjny
         hdr.bridge.setValid();
         hdr.bridge.recirc_count = ig_md.recirc_count + 1;
-        hdr.bridge._pad = 0;
         ig_tm_md.ucast_egress_port = RECIRC_PORT;
     }
 
