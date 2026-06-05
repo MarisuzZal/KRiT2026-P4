@@ -6,6 +6,7 @@ Programuje:
   * mac_lookup       — przykładowe dst MAC -> port
   * ipv4_lookup      — przykładowe podsieci -> (port, next-hop MAC)
 """
+import sde_paths  # noqa: F401  # MUSI być przed bfrt_grpc
 import bfrt_grpc.client as gc
 from common import (connect, ip_to_int, mac_to_int,
                     PORT_FROM_ANALYZER_A, PORT_FROM_ANALYZER_B)

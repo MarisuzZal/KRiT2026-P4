@@ -5,6 +5,7 @@ Kontroler dla null_switch.p4 — przezroczyste przekierowanie portowe.
 Programuje pojedynczą tablicę `forward` mapującą:
     PORT_FROM_ANALYZER_A -> PORT_FROM_ANALYZER_B   (i odwrotnie)
 """
+import sde_paths  # noqa: F401  # MUSI być przed bfrt_grpc
 import bfrt_grpc.client as gc
 from common import connect, T2_PORT_A0, T2_PORT_A1, T2_PORT_B0, T2_PORT_B1
 
