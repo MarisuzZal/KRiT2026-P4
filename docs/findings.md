@@ -552,13 +552,44 @@ Z 758-sekundowego runu (przerwany Tkinter bug, naprawiony w commit 602cbda):
 
 | Wielkość | Wartość | Komentarz |
 |--:|--:|:--|
-| Δ_DUT_raw | **971-1032 ns** | mean ~ 1002 ns |
-| jitter_DUT | **61 ns** | (max - min) |
-| Δ_baseline | **646.83 ns** | ± 3.85 ns |
-| σ_baseline | **3.85 ns** | (mean drift +/-0.05 przez 758 s) |
-| **Δ_DUT_corrected** | **~355 ns** | = mean_DUT − Δ_baseline |
-| count_DUT po 60 s (po fix BUG A) | **2.2 mld** | 22 Mpps × 4 pipes |
-| count_baseline po 60 s | **914 M** | 10 Mpps × 4 pipes (recirc) |
+### POPRAWKA 2026-06-05 (po Bug B fix): faktyczne Δ_DUT większe.
+
+| Wielkość | Wartość | Komentarz |
+|--:|--:|:--|
+| Δ_DUT (snap, mean histogram) | **~1635 ns** | snap_delta=1631-1653 ns, mean hist bin 82 |
+| Δ_baseline (mean histogram) | **650.0 ns** | ± 0.76 ns (super niski jitter!) |
+| **Δ_DUT_corrected** | **985.7 ns** | = mean_DUT − Δ_baseline (z histogramu) |
+| σ_baseline | **0.76 ns** | (bin_width=20, lepsza dokładność) |
+| reg_min/max DUT | 967 / 1029 ns | TYLKO pipe 1 (krótsza ścieżka) — vide niżej |
+| jitter histogram_DUT | ~60 ns | rozkład bin 81-84 (1620-1700 ns) |
+| count_DUT (60 s) | **~12 Mpps** | wszystkie 4 kierunki Plan A |
+| count_baseline (60 s) | **~1.7 Mpps** | recirc per-pipe |
+
+### Wcześniejsze niedoszacowanie (z reg_min/max)
+
+Pierwotnie raportowane Δ_DUT_corrected = 355 ns było artefaktem.
+reg_min agreguje przez `min` ze wszystkich pipes, reg_max przez `max`.
+Pipe 1 (uplink RX_A/B: 132/128) i pipe 2 (uplink TX_A/B: 288/292)
+widzą RÓŻNE delta:
+
+  - Pipe 1: ~967-1029 ns (krótsza ścieżka)
+  - Pipe 2: ~1640 ns (pełna trasa)
+
+`reg_min[0]` = min(pipe 1, pipe 2) = 967 (pipe 1)
+`reg_max[0]` = max(pipe 1, pipe 2) — powinno być 1670 ale daje 1029
+              (pipe 2 update_max nie wykonuje się — możliwe MAU stage
+               limit lub PHV alignment per-pipe)
+`snap_delta[0]` agg=max widzi 1640 (pipe 2)
+Histogram zlicza wszystkie pakiety i pokazuje peak w bin 82 (=1640 ns)
+
+Bug B (histogram cały w bin 0): naprawiony przez 3 fixy:
+  1. compute_delta jeden subtract zamiast dwóch (commit 5a26dca)
+  2. \$MATCH_PRIORITY w wpisach (commit e364ce5)
+  3. **HISTOGRAM_BIN_WIDTH_NS = 20** (commit 6c52fb9) — kluczowy:
+     stary zakres [0..1279] ns nie pokrywał DUT delta ~1640 ns,
+     nowy [0..2559] ns pokrywa
+  4. reset_registers przed pomiarem (commit b98f0be):
+     stare dane z poprzednich runów brudziły histogram.
 
 Liczby pozostają stabilne w czasie z dokładnością ±1 ns dla min/max przez
 13 minut. To główne dane do §6 paper.
@@ -605,4 +636,4 @@ Application Note. Kluczowe odniesienia:
 ---
 
 *Dokument tworzony w trakcie pomiarów. Aktualizacje commit-by-commit.*
-*Ostatnia aktualizacja: 5 czerwca 2026 — Plan A pełna symetria + Δ_DUT_corrected = 355 ns.*
+*Ostatnia aktualizacja: 5 czerwca 2026 — Bug B definitywnie rozwiązany, Δ_DUT_corrected = 985.7 ns.*
