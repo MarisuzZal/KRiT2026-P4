@@ -104,7 +104,7 @@ def main():
     print(f"[*] Start pollingu (interval={POLL_INTERVAL_SEC}s)")
     print(f"{'timestamp':>10} {'count_DUT':>10} {'avg_real':>10} "
           f"{'min':>8} {'max':>8} {'jitter':>8} {'base_avg':>10} "
-          f"{'base_std':>10} {'base_n':>12}")
+          f"{'base_std':>10} {'base_n':>12} {'snap_DUT':>10} {'snap_BASE':>10}")
 
     while _running:
         time.sleep(POLL_INTERVAL_SEC)
@@ -135,7 +135,9 @@ def main():
               f"{metrics['max']:>8.1f} {metrics['jitter']:>8.1f} "
               f"{metrics.get('baseline_avg', 0):>10.1f} "
               f"{metrics.get('baseline_std', 0):>10.2f} "
-              f"{metrics.get('baseline_total_hist', 0):>12}")
+              f"{metrics.get('baseline_total_hist', 0):>12} "
+              f"{stats['dut'].get('snap_delta', 0):>10} "
+              f"{stats['base'].get('snap_delta', 0):>10}")
 
         # Snapshot PNG co N sekund
         if now - last_snapshot >= args.snapshot_interval:

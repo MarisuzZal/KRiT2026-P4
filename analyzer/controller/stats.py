@@ -48,6 +48,9 @@ def read_all_stats(bfrt, target):
     count_v = _read_register(bfrt, target, "reg_count",   2, aggregator=sum)
     hist_d  = _read_register(bfrt, target, "reg_hist_dut",  128, aggregator=sum)
     hist_b  = _read_register(bfrt, target, "reg_hist_base", 128, aggregator=sum)
+    # DIAGNOSTYKA Bug B: snapshot ig_md.delta dla ostatniego pakietu w każdym pipe.
+    # Agregacja: max — jeśli ANY pipe widzi delta>=1000, snap_delta będzie 1000+.
+    snap_d  = _read_register(bfrt, target, "reg_snap_delta", 2, aggregator=max)
     return {
         "dut": {
             "min":   min_v[0],
@@ -55,6 +58,7 @@ def read_all_stats(bfrt, target):
             "sum":   sum_v[0],
             "count": count_v[0],
             "hist":  hist_d,
+            "snap_delta": snap_d[0],
         },
         "base": {
             "min":   min_v[1],
@@ -62,6 +66,7 @@ def read_all_stats(bfrt, target):
             "sum":   sum_v[1],
             "count": count_v[1],
             "hist":  hist_b,
+            "snap_delta": snap_d[1],
         },
     }
 

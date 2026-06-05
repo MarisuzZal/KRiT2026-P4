@@ -326,6 +326,22 @@ control SwitchIngress(
         }
     };
 
+    // -------------------------------------------------------------------------
+    // DIAGNOSTYKA Bug B: snapshot ig_md.delta dla ostatniego pakietu.
+    //   index 0 = DUT, index 1 = baseline (jak inne SALU)
+    //   Wywoływane PRZED histogram_bin_map.apply() — pokaże co tabela widzi
+    //   na bus klucza dla pakietów które potem trafiają do bin 0 (DUT) vs
+    //   bin 64 (baseline). Jeśli snap_delta[0] = 1000+, hardware widzi
+    //   poprawną wartość ALE TCAM match nie znajduje wpisu.
+    // -------------------------------------------------------------------------
+    Register<bit<32>, bit<1>>(2, 0) reg_snap_delta;
+    RegisterAction<bit<32>, bit<1>, bit<32>>(reg_snap_delta) snap_delta = {
+        void apply(inout bit<32> value, out bit<32> rv) {
+            value = ig_md.delta;
+            rv = value;
+        }
+    };
+
     // =========================================================================
     // Główna logika
     // =========================================================================
@@ -341,6 +357,7 @@ control SwitchIngress(
         // 3) Pomiar (tylko dla pakietów wracających)
         if (ig_md.is_returning == 1 && hdr.ts.isValid()) {
             compute_delta();
+            snap_delta.execute(ig_md.path_is_baseline);  // DIAGNOSTYKA Bug B
             histogram_bin_map.apply();
             update_min.execute(ig_md.path_is_baseline);
             update_max.execute(ig_md.path_is_baseline);
