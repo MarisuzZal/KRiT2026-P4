@@ -60,7 +60,7 @@ struct headers_t {
 }
 
 struct ig_metadata_t {
-    bit<3> recirc_count;
+    bit<8> recirc_count;
     bit<1> l2_hit;
 }
 struct eg_metadata_t {}
