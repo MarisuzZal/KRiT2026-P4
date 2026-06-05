@@ -112,7 +112,6 @@ struct headers_t {
 
 struct ig_metadata_t {
     delta_t     delta;            // wyliczone Δ (tylko dla pakietów wracających)
-    bit<16>     delta_lo;         // dolne 16 bitów Δ — klucz range-match histogramu
     bit<1>      is_returning;     // 1 = pakiet wraca (z DUT lub baseline)
     bit<1>      path_is_baseline; // 1 = ścieżka baseline, 0 = DUT (indeks rejestru)
     bin_idx_t   bin;              // indeks binu histogramu (0..127)
@@ -246,13 +245,15 @@ control SwitchIngress(
     // -------------------------------------------------------------------------
     action compute_delta() {
         // 32-bit subtract — wystarcza dla pomiaru (range 4.3 s).
-        // delta_lo bierzemy ze SLICE'A już-obliczonego delta (32->16-bit slice
-        // jest tani w jednym PHV container), nie z osobnego slice z 48-bit
-        // diff (który bf-p4c może nieoczekiwanie zoptymalizować do zera).
+        // UWAGA: histogram_bin_map używa slice ig_md.delta[15:0] BEZPOŚREDNIO
+        // w kluczu range, bez osobnego pola metadata. Wcześniejsza próba
+        // (ig_md.delta_lo jako osobne pole, slice z delta) generowała w bf-p4c
+        // DRUGI DirectAluPrimitive sub z dst_mask=0xFFFF na 48-bit operands,
+        // co dawało garbage poza zakresem [0..1279] — i histogram lądował
+        // wszystko w bin 0 (default NoAction). Patrz tofino/pipe/context.json.
         bit<32> hi = (bit<32>)ig_intr_md.ingress_mac_tstamp;
         bit<32> lo = (bit<32>)hdr.ts.tx_ts;
-        ig_md.delta    = hi - lo;
-        ig_md.delta_lo = ig_md.delta[15:0];
+        ig_md.delta = hi - lo;
     }
 
     // -------------------------------------------------------------------------
@@ -262,7 +263,7 @@ control SwitchIngress(
     action set_bin(bin_idx_t b) { ig_md.bin = b; }
 
     table histogram_bin_map {
-        key = { ig_md.delta_lo : range; }   // 16-bit — TNA range-match budget
+        key = { ig_md.delta[15:0] : range; }   // slice w kluczu (16-bit; TNA range-match budget)
         actions = { set_bin; NoAction; }
         default_action = NoAction;
         size = HIST_BINS;

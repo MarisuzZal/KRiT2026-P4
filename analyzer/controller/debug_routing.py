@@ -56,7 +56,7 @@ def dump_histogram_bin_map(bfrt, target, label):
             n += 1
             k = key.to_dict()
             d = data.to_dict()
-            delta_d = k.get("ig_md.delta_lo", {})
+            delta_d = k.get("ig_md.delta", k.get("ig_md.delta_lo", {}))
             low = delta_d.get("low", "?")
             high = delta_d.get("high", "?")
             b = d.get("b", "?")
