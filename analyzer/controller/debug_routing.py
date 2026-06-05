@@ -56,18 +56,35 @@ def dump_histogram_bin_map(bfrt, target, label):
             n += 1
             k = key.to_dict()
             d = data.to_dict()
-            delta_d = k.get("ig_md.delta", k.get("ig_md.delta_lo", {}))
-            low = delta_d.get("low", "?")
-            high = delta_d.get("high", "?")
+            # Klucz może mieć różne nazwy: ig_md.delta_lo, ig_md.delta,
+            # ig_md.delta[15:0]. Bierzemy pierwszy klucz typu Range
+            # (nie $MATCH_PRIORITY, ma low/high).
+            low = high = "?"
+            for k_name, k_val in k.items():
+                if k_name == "$MATCH_PRIORITY":
+                    continue
+                if isinstance(k_val, dict) and "low" in k_val:
+                    low = k_val.get("low", "?")
+                    high = k_val.get("high", "?")
+                    break
+            prio = k.get("$MATCH_PRIORITY", {}).get("value", "?")
             b = d.get("b", "?")
-            bins.append((low, high, b))
+            bins.append((low, high, b, prio))
     except Exception as e:
         print(f"  [{label}] ERROR: {e}")
         return 0
     print(f"  [{label}] histogram_bin_map: {n} wpisów")
     if n > 0:
-        print(f"    pierwszy: low={bins[0][0]} high={bins[0][1]} bin={bins[0][2]}")
-        print(f"    ostatni:  low={bins[-1][0]} high={bins[-1][1]} bin={bins[-1][2]}")
+        # Sortuj po bin
+        srt = sorted(bins, key=lambda x: x[2] if isinstance(x[2], int) else 999)
+        print(f"    pierwszy: bin={srt[0][2]:>3} low={srt[0][0]:>5} high={srt[0][1]:>5} priority={srt[0][3]}")
+        # Bin 64 (delta baseline ~640-649) — działa
+        # Bin 100 (delta DUT ~1000-1009) — nie działa, kluczowy do diagnozy
+        for low, high, b, prio in srt:
+            if b in (64, 100):
+                tag = "← baseline (DZIAŁA)" if b == 64 else "← DUT (NIE DZIAŁA)"
+                print(f"    BIN {b}:  bin={b:>3} low={low:>5} high={high:>5} priority={prio}   {tag}")
+        print(f"    ostatni:  bin={srt[-1][2]:>3} low={srt[-1][0]:>5} high={srt[-1][1]:>5} priority={srt[-1][3]}")
     return n
 
 
