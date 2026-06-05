@@ -120,8 +120,14 @@ def program_histogram(bfrt, target):
     for i in range(128):
         low  = HISTOGRAM_OFFSET_NS + i * HISTOGRAM_BIN_WIDTH_NS
         high = HISTOGRAM_OFFSET_NS + (i + 1) * HISTOGRAM_BIN_WIDTH_NS - 1
+        # $MATCH_PRIORITY: niższa liczba = wyższy priorytet.
+        # Wpisy są rozłączne (przedziały nie nakładają się), więc każdy
+        # może mieć dowolną unikalną priorytet — używamy i+1.
+        # BEZ priority hardware TCAM zwraca niedeterministyczny match
+        # (typowo pierwszy TCAM line = bin 0 dla każdej wartości).
         key = tbl.make_key([
             gc.KeyTuple(key_name, low=low, high=high),
+            gc.KeyTuple("$MATCH_PRIORITY", i + 1),
         ])
         data = tbl.make_data([
             gc.DataTuple("b", i),
