@@ -151,7 +151,7 @@ def main():
     d_base = data[baseline_label]
     midpoints = (d_base["bl"] + d_base["bh"]) / 2
     ax.bar(midpoints, d_base["base"], width=bin_width * 0.7,
-           alpha=0.35, label=f"baseline (Δ ≈ 650 ns, σ < 1 ns)",
+           alpha=0.35, label=r"baseline ($t_\mathrm{base} \approx 650$ ns, $\sigma < 1$ ns)",
            color="tab:gray", edgecolor="black", linewidth=0.3)
 
     # Dla scenariuszy z polling — axvspan w rzeczywistym zakresie z reg_min/max.
@@ -166,10 +166,10 @@ def main():
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel(r"$\Delta$ [ns]")
+    ax.set_xlabel(r"$t$ [ns]")
     ax.set_ylabel("liczba pakietów")
-    ax.set_title(r"$\Delta_\mathrm{DUT}$ vs $\Delta_\mathrm{baseline}$ -- 3 programy DUT (15 min)")
-    ax.legend(loc="upper right", fontsize=8)
+    ax.set_title(r"$t_\mathrm{DUT}$ vs $t_\mathrm{base}$ -- 3 programy DUT (15 min)")
+    ax.legend(loc="upper center", fontsize=8)
     ax.grid(True, which="both", alpha=0.3)
     ax.set_xlim(400, 300_000)
 
@@ -276,7 +276,7 @@ def plot_cdf(data, out_path):
         )
 
     ax.set_xscale("log")
-    ax.set_xlabel(r"$\Delta$ [ns]")
+    ax.set_xlabel(r"$t$ [ns]")
     ax.set_ylabel("CDF [%]")
     ax.set_title("CDF Δ_DUT — 3 programy DUT + baseline")
     ax.legend(loc="lower right", fontsize=8)
