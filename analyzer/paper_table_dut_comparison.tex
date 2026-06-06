@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\caption{Wyniki pomiaru Δ_DUT dla trzech programów DUT (15 min, 4 kierunki, 100~Gbps). $^\dagger$Dla l2l3\_recirc2 wartości z reg\_min/max polling — histogram przekracza zakres 16-bit slice klucza.}
+\label{tab:dut_comparison}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Program DUT} & \textbf{N pakietów} & \textbf{Δ\_DUT} & \textbf{σ\_DUT} & \textbf{Δ\_DUT - Δ\_base} & \textbf{vs. null} \\
+& & \textbf{[ns]} & \textbf{[ns]} & \textbf{[ns]} & \\
+\midrule
+null\_switch & 11,657,663,828 & 1641.7 & 9.9 & 991.7 & — \\
+l2l3\_switch & 7,341,919,053 & 1664.0 & 9.2 & 1014.0 & +22.3 \\
+l2l3\_recirc2$^\dagger$ & 5,556,947,077 & 198955.0 & 1209.0 & 198305.0 & +197313.3 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -96,6 +96,7 @@ def main():
         "l2l3_recirc2": {
             "mean": 198955.0,    # = (reg_min 196,536 + reg_max 201,375) / 2
             "std":  1209.0,       # = jitter / 4 estimate (jitter 4,839 ns)
+            "total": 5556947077, # dut_count z measurement_log_l2l3_recirc2.csv
             "reg_min": 196536.0,
             "reg_max": 201375.0,
             "from": "reg_min/max polling (snap_DUT confirms ~201,500 ns)",
@@ -115,6 +116,7 @@ def main():
             override = HISTOGRAM_OUT_OF_RANGE[label]
             sd["mean"] = override["mean"]
             sd["std"]  = override["std"]
+            sd["total"] = override["total"]
             sd["from_polling"] = True
             print(f"  [INFO] {label}: histogram out of range, używam reg_min/max")
         else:
@@ -134,6 +136,10 @@ def main():
     bin_width = data[list(data)[0]]["bl"][1] - data[list(data)[0]]["bl"][0]
 
     for label, d in data.items():
+        if d["sd"].get("from_polling", False):
+            # Histogram out of range -- nie rysuj mylących residual bars,
+            # poniżej dodajemy axvspan w prawdziwym zakresie z reg_min/max.
+            continue
         midpoints = (d["bl"] + d["bh"]) / 2
         # bar plot z log-y żeby ogonki były widoczne
         ax.bar(midpoints, d["dut"], width=bin_width * 0.9,
@@ -148,33 +154,26 @@ def main():
            alpha=0.35, label=f"baseline (Δ ≈ 650 ns, σ < 1 ns)",
            color="tab:gray", edgecolor="black", linewidth=0.3)
 
-    # Annotacje Δ_DUT_corrected
-    bx_y = max(d["dut"].max() for d in data.values()) * 0.6
-    for i, (label, d) in enumerate(data.items()):
-        delta_corr = d["sd"]["mean"] - 650  # baseline ~ 650 ns
-        ax.annotate(
-            f"{label}\nΔ = {delta_corr:.0f} ns",
-            xy=(d["sd"]["mean"], d["sd"]["total"] * 0.55),
-            xytext=(d["sd"]["mean"] * 1.4, bx_y * (1 - 0.15 * i)),
-            arrowprops=dict(arrowstyle="->", color=d["color"], lw=1),
-            fontsize=9, color=d["color"], ha="left",
-        )
+    # Dla scenariuszy z polling — axvspan w rzeczywistym zakresie z reg_min/max.
+    for label, d in data.items():
+        if not d["sd"].get("from_polling", False):
+            continue
+        override = HISTOGRAM_OUT_OF_RANGE[label]
+        ax.axvspan(override["reg_min"], override["reg_max"],
+                   alpha=0.30, color=d["color"],
+                   label=(f"{label} (N={d['sd']['total']:,}, "
+                          f"{override['reg_min']/1000:.0f}-{override['reg_max']/1000:.0f}~$\\mu$s)"))
 
     ax.set_xscale("log")
-    ax.set_xlabel("Δ [ns]  (log-skala)")
+    ax.set_yscale("log")
+    ax.set_xlabel(r"$\Delta$ [ns]")
     ax.set_ylabel("liczba pakietów")
-    ax.set_title("Δ_DUT vs Δ_baseline — 3 programy DUT (15 min runy)")
+    ax.set_title(r"$\Delta_\mathrm{DUT}$ vs $\Delta_\mathrm{baseline}$ -- 3 programy DUT (15 min)")
     ax.legend(loc="upper right", fontsize=8)
     ax.grid(True, which="both", alpha=0.3)
-    ax.set_xlim(50, 300_000)
+    ax.set_xlim(400, 300_000)
 
-    # Footer
-    md = data[list(data)[0]]["meta"]
-    footer = (f"git: {md.get('git_commit', '?')}  |  "
-              f"runs: {', '.join(data.keys())}  |  "
-              f"bin_width = {md.get('bin_width_ns', '?')} ns")
-    fig.text(0.5, 0.01, footer, ha="center", fontsize=7, color="gray")
-    fig.tight_layout(rect=[0, 0.03, 1, 1])
+    fig.tight_layout()
 
     out_pdf = Path("paper_figure_dut_comparison.pdf")
     out_png = Path("paper_figure_dut_comparison.png")
@@ -277,7 +276,7 @@ def plot_cdf(data, out_path):
         )
 
     ax.set_xscale("log")
-    ax.set_xlabel("Δ [ns]  (log-skala)")
+    ax.set_xlabel(r"$\Delta$ [ns]")
     ax.set_ylabel("CDF [%]")
     ax.set_title("CDF Δ_DUT — 3 programy DUT + baseline")
     ax.legend(loc="lower right", fontsize=8)
@@ -285,13 +284,7 @@ def plot_cdf(data, out_path):
     ax.set_xlim(500, 300_000)
     ax.set_ylim(0, 105)
 
-    # Footer
-    md = data[list(data)[0]]["meta"]
-    footer = (f"git: {md.get('git_commit', '?')}  |  "
-              f"$^\dagger$ recirc2: histogram out of 16-bit slice range; "
-              f"wartość z polling reg_min/max")
-    fig.text(0.5, 0.01, footer, ha="center", fontsize=7, color="gray")
-    fig.tight_layout(rect=[0, 0.03, 1, 1])
+    fig.tight_layout()
 
     fig.savefig(out_path.with_suffix(".pdf"), dpi=150, bbox_inches="tight")
     fig.savefig(out_path.with_suffix(".png"), dpi=150, bbox_inches="tight")
